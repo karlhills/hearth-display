@@ -612,8 +612,8 @@ export function App() {
 
             if (module.key === "photos") {
               return (
-                <Card key="photos" className={[getLayoutClass(module.layout), "relative overflow-hidden"].join(" ")}>
-                  <div className="relative h-64 w-full overflow-hidden rounded-2xl">
+                <Card key="photos" className={[getLayoutClass(module.layout), "relative flex flex-col overflow-hidden"].join(" ")}>
+                  <div className="relative w-full flex-1 overflow-hidden rounded-2xl min-h-[16rem]">
                     {mergedPhotos.map((photo, idx) => (
                       <img
                         key={photo}
