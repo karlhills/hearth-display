@@ -1,0 +1,16 @@
+services:
+  hearth:
+    build: .
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - HOST=0.0.0.0
+      - DATA_PATH=/data/hearth.db
+    volumes:
+      - hearth-data:/data
+      - ./data/photos:/data/photos
+    restart: unless-stopped
+
+volumes:
+  hearth-data:

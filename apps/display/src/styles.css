@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.hearth-bg {
+  background-color: var(--bg);
+  background-image:
+    var(--bg-image),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 25% 20%, rgba(45, 212, 191, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(96, 165, 250, 0.08), transparent 50%);
+  background-repeat: no-repeat;
+  background-size: cover, auto, auto, auto;
+  background-position: var(--bg-position), 0 0, 0 0, 0 0;
+}
+
+.hearth-marquee-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+}
+
+.hearth-marquee {
+  display: inline-flex;
+  gap: 1.5rem;
+  animation: hearth-marquee 12s linear infinite;
+  padding-right: 1.5rem;
+}
+
+.hearth-marquee > span {
+  white-space: nowrap;
+}
+
+.hearth-marquee-single {
+  display: inline-block;
+  white-space: nowrap;
+  padding-right: 24px;
+  animation: hearth-marquee-single linear infinite;
+}
+
+.hearth-title-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.hearth-ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hearth-ellipsis-text {
+  display: block;
+}
+
+.hearth-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes hearth-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes hearth-marquee-single {
+  0% {
+    transform: translateX(var(--marquee-container));
+  }
+  100% {
+    transform: translateX(calc(-1 * var(--marquee-distance)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hearth-marquee {
+    animation: none;
+  }
+}
+
+.hearth-note b,
+.hearth-note strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hearth-note u {
+  text-decoration: underline;
+}
+
+.hearth-note table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.95em;
+}
+
+.hearth-note th,
+.hearth-note td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.hearth-note th {
+  color: var(--text);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}

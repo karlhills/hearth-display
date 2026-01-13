@@ -1,0 +1,53 @@
+:root {
+  --bg: #0B0F14;
+  --surface: #111827;
+  --surface-2: #0F172A;
+  --calendar-day: #0F172A;
+  --calendar-day-muted: rgba(15, 23, 42, 0.6);
+  --calendar-today: #111827;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.65);
+  --faint: rgba(255, 255, 255, 0.45);
+  --accent: #2DD4BF;
+  --button-text: rgba(255, 255, 255, 0.92);
+  --button-text-on-accent: #0B0F14;
+  --bg-image: none;
+  --bg-position: center;
+}
+
+:root[data-theme="light"] {
+  --bg: #F6F7FB;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --calendar-day: #EEF2FF;
+  --calendar-day-muted: rgba(238, 242, 255, 0.6);
+  --calendar-today: #FFFFFF;
+  --border: rgba(15, 23, 42, 0.1);
+  --text: rgba(15, 23, 42, 0.92);
+  --muted: rgba(15, 23, 42, 0.65);
+  --faint: rgba(15, 23, 42, 0.45);
+  --accent: #2DD4BF;
+  --button-text: rgba(15, 23, 42, 0.92);
+  --button-text-on-accent: #0B0F14;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0B0F14;
+  --surface: #111827;
+  --surface-2: #0F172A;
+  --calendar-day: #0F172A;
+  --calendar-day-muted: rgba(15, 23, 42, 0.6);
+  --calendar-today: #111827;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.65);
+  --faint: rgba(255, 255, 255, 0.45);
+  --accent: #2DD4BF;
+  --button-text: rgba(255, 255, 255, 0.92);
+  --button-text-on-accent: #0B0F14;
+}
+
+html {
+  font-variant-numeric: tabular-nums;
+}

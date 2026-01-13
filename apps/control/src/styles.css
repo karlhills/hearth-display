@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.hearth-bg {
+  background-color: var(--bg);
+  background-image:
+    var(--bg-image),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 25% 20%, rgba(45, 212, 191, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(96, 165, 250, 0.08), transparent 50%);
+  background-repeat: no-repeat;
+  background-size: cover, auto, auto, auto;
+  background-position: var(--bg-position), 0 0, 0 0, 0 0;
+}
+
+.hearth-note-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.95em;
+}
+
+.hearth-note-editor th,
+.hearth-note-editor td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.hearth-note-editor th {
+  color: var(--text);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}
