@@ -2,6 +2,8 @@
 
 Hearth is a local-first, LAN-only family dashboard built for a TV browser. It runs on an always-on device and gives you a big-screen `/display` view plus a mobile-first `/control` view.
 
+![Hearth screenshot](apps/control/public/screenshot.png)
+
 ## Features
 
 - Local-first, LAN-only with a simple pairing code

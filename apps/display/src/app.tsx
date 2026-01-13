@@ -601,7 +601,7 @@ export function App() {
             if (module.key === "note") {
               return (
                 <Card key="note" className={getLayoutClass(module.layout)}>
-                  <SectionHeader title={state.noteTitle || "Family Note"} />
+                  {state.noteTitle ? <SectionHeader title={state.noteTitle} /> : null}
                   <div
                     className="hearth-note mt-4 text-lg text-muted"
                     dangerouslySetInnerHTML={{ __html: state.note }}
@@ -613,8 +613,7 @@ export function App() {
             if (module.key === "photos") {
               return (
                 <Card key="photos" className={[getLayoutClass(module.layout), "relative overflow-hidden"].join(" ")}>
-                  <SectionHeader title="Photos" />
-                  <div className="relative mt-6 h-64 w-full overflow-hidden rounded-2xl">
+                  <div className="relative h-64 w-full overflow-hidden rounded-2xl">
                     {mergedPhotos.map((photo, idx) => (
                       <img
                         key={photo}

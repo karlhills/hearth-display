@@ -16,5 +16,14 @@ export function Button({ variant = "primary", className, ...props }: ButtonProps
       ? { color: "var(--button-text-on-accent)", ...(props.style ?? {}) }
       : { color: "var(--button-text)", ...(props.style ?? {}) };
 
-  return <button className={[base, styles, className].filter(Boolean).join(" ")} style={style} {...props} />;
+  const isDisabled = Boolean(props.disabled);
+  const disabledStyles = isDisabled ? "opacity-60 cursor-not-allowed" : "";
+
+  return (
+    <button
+      className={[base, styles, disabledStyles, className].filter(Boolean).join(" ")}
+      style={style}
+      {...props}
+    />
+  );
 }

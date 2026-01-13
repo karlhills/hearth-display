@@ -151,14 +151,26 @@ export function registerControlRoutes(
       return { error: "Unauthorized" };
     }
     const body = request.body as { icsUrl?: string; syncNow?: boolean };
-    const url = body.icsUrl?.trim();
-    if (url) {
-      await setCalendarIcsUrl(db, url);
-    }
+    const url = body.icsUrl?.trim() ?? "";
+    await setCalendarIcsUrl(db, url);
 
-    if (body.syncNow && url) {
-      const next = await syncCalendarFromIcs(db, url);
-      if (next) {
+    if (body.syncNow) {
+      if (url) {
+        const next = await syncCalendarFromIcs(db, url);
+        if (next) {
+          sse.broadcastAll(next);
+        }
+      } else {
+        const currentRaw = await loadState(db);
+        const current = currentRaw ? ensureStateDefaults(currentRaw) : null;
+        if (!current) {
+          reply.code(500);
+          return { error: "State missing" };
+        }
+        const next = mergeState(current, {
+          events: current.events.filter((event) => event.source === "manual")
+        });
+        await saveState(db, next);
         sse.broadcastAll(next);
       }
     }

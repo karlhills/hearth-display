@@ -51,8 +51,10 @@ const emptyState: HearthState = {
 };
 
 function createBlankEvent(): CalendarEvent {
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return {
-    id: crypto.randomUUID(),
+    id,
     title: "",
     date: new Date().toISOString().slice(0, 10),
     allDay: true,
@@ -166,7 +168,7 @@ export function App() {
   const [calendarSyncing, setCalendarSyncing] = useState(false);
   const [weatherQuery, setWeatherQuery] = useState("");
   const [weatherSyncing, setWeatherSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "layout" | "calendar" | "photos" | "weather">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "layout" | "calendar" | "photos" | "weather" | "about">("general");
   const noteRef = useRef<HTMLDivElement | null>(null);
   const [googleStatus, setGoogleStatus] = useState<{ connected: boolean }>({
     connected: false
@@ -778,7 +780,8 @@ export function App() {
               { key: "layout", label: "Layout" },
               { key: "calendar", label: "Calendar" },
               { key: "photos", label: "Photos" },
-              { key: "weather", label: "Weather" }
+              { key: "weather", label: "Weather" },
+              { key: "about", label: "About" }
             ].map((tab) => (
               <Button
                 key={tab.key}
@@ -942,7 +945,7 @@ export function App() {
               <SectionHeader title="Calendar Events" meta="Manual only" />
               <div className="mt-4 space-y-3">
                 {state.events.filter((event) => event.source !== "ics").map((event, index) => (
-                  <div key={event.id} className="grid grid-cols-[1fr_130px] gap-3">
+                  <div key={event.id} className="grid gap-3">
                     <input
                       className="rounded-xl border border-border bg-surface2 px-3 py-2 text-sm text-text"
                       placeholder="Event title"
@@ -956,8 +959,8 @@ export function App() {
                     />
                     <div className="flex items-center gap-2">
                       <input
+                        type="date"
                         className="w-full rounded-xl border border-border bg-surface2 px-3 py-2 text-sm text-text"
-                        placeholder="YYYY-MM-DD"
                         value={event.date}
                         onChange={(e) => {
                           const next = state.events.map((item) =>
@@ -1249,6 +1252,42 @@ export function App() {
               </div>
               <Button className="mt-4" onClick={handleSaveWeather} disabled={weatherSyncing}>
                 Save & Sync
+              </Button>
+            </Card>
+          </>
+        ) : null}
+
+        {activeTab === "about" ? (
+          <>
+            <Card>
+              <SectionHeader title="About" />
+              <div className="mt-4 space-y-3 text-sm text-muted">
+                <div>
+                  Created by{" "}
+                  <a className="text-accent underline" href="https://www.84boxes.com" target="_blank" rel="noreferrer">
+                    84boxes
+                  </a>
+                  .
+                </div>
+                <div>Licensed under the MIT license.</div>
+                <div>
+                  Issues and updates:{" "}
+                  <a
+                    className="text-accent underline"
+                    href="https://github.com/karlhills/hearth-display"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    github.com/karlhills/hearth-display
+                  </a>
+                </div>
+              </div>
+              <Button
+                className="mt-6"
+                variant="primary"
+                onClick={() => window.open("https://buymeacoffee.com/84boxes", "_blank", "noreferrer")}
+              >
+                Buy me a coffee
               </Button>
             </Card>
           </>
