@@ -7,6 +7,7 @@ const emptyState: HearthState = {
   theme: "dark",
   modules: { calendar: true, photos: true, weather: true },
   calendarView: "week",
+  calendarTimeFormat: "12h",
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,
@@ -1058,6 +1059,28 @@ export function App() {
                   disabled={saving}
                 >
                   Monthly
+                </Button>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  variant={state.calendarTimeFormat === "12h" ? "primary" : "secondary"}
+                  onClick={async () => {
+                    const updated = await updateState({ calendarTimeFormat: "12h" });
+                    setState(updated);
+                  }}
+                  disabled={saving}
+                >
+                  12-hour
+                </Button>
+                <Button
+                  variant={state.calendarTimeFormat === "24h" ? "primary" : "secondary"}
+                  onClick={async () => {
+                    const updated = await updateState({ calendarTimeFormat: "24h" });
+                    setState(updated);
+                  }}
+                  disabled={saving}
+                >
+                  24-hour
                 </Button>
               </div>
             </Card>

@@ -7,6 +7,7 @@ const fallbackState: HearthState = {
   theme: "dark",
   modules: { calendar: true, photos: true, weather: true },
   calendarView: "week",
+  calendarTimeFormat: "12h",
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,

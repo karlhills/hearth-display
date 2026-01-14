@@ -14,7 +14,7 @@ type IcsEvent = {
   tz?: string;
 };
 
-export function parseIcsEvents(icsText: string, now = new Date()) {
+export function parseIcsEvents(icsText: string, now = new Date(), timeFormat: "12h" | "24h" = "12h") {
   const data = ical.parseICS(icsText) as Record<string, IcsEvent>;
   const events: CalendarEvent[] = [];
   const windowStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -46,16 +46,19 @@ export function parseIcsEvents(icsText: string, now = new Date()) {
   };
 
   const formatLocalTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const hour12 = timeFormat === "12h";
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12 });
   };
 
   const formatTimeZoneTime = (date: Date, timeZone?: string) => {
     if (!timeZone) return formatLocalTime(date);
     try {
+      const hour12 = timeFormat === "12h";
       return new Intl.DateTimeFormat([], {
         timeZone,
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
+        hour12
       }).format(date);
     } catch {
       return formatLocalTime(date);

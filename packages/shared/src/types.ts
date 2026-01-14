@@ -82,6 +82,7 @@ export type HearthState = {
   theme: Theme;
   modules: Record<ModuleKey, boolean>;
   calendarView: "week" | "month";
+  calendarTimeFormat: "12h" | "24h";
   tempUnit: "f" | "c";
   weatherForecastEnabled: boolean;
   qrEnabled: boolean;

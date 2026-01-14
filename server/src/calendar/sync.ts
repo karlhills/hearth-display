@@ -26,9 +26,9 @@ export async function syncCalendarFromIcs(db: HearthDb, url: string) {
     throw new Error(`Failed to fetch ICS (${res.status})`);
   }
   const text = await res.text();
-  const events = parseIcsEvents(text, new Date());
   const state = await loadState(db);
   if (!state) return null;
+  const events = parseIcsEvents(text, new Date(), state.calendarTimeFormat ?? "12h");
   const manualEvents = state.events.filter((event) => event.source === "manual");
   const next = {
     ...state,
