@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, HearthState, Theme } from "@hearth/shared";
 import { Button, Card, SectionHeader, Toggle } from "@hearth/ui";
-import { clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
+import { clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPairingCode, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
 
 const emptyState: HearthState = {
   theme: "dark",
@@ -202,6 +202,7 @@ export function App() {
   const [pickerUri, setPickerUri] = useState("");
   const [pickerReady, setPickerReady] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const pickerWindowRef = useRef<Window | null>(null);
   const [pickerAutoSync, setPickerAutoSync] = useState(false);
   const [localPhotosDir, setLocalPhotosDir] = useState("");
@@ -281,6 +282,12 @@ export function App() {
 
     fetchLocalPhotosSettings()
       .then((data) => setLocalPhotosDir(data.directory))
+      .catch((err) => {
+        console.error(err);
+      });
+
+    fetchPairingCode()
+      .then((data) => setPairingCode(data.code || null))
       .catch((err) => {
         console.error(err);
       });
@@ -860,6 +867,13 @@ export function App() {
                 >
                   {copySuccess ? "Copied" : "Copy URL"}
                 </Button>
+              </div>
+              <div className="mt-4 rounded-xl border border-border bg-surface2 px-4 py-3 text-sm">
+                <div className="text-xs uppercase tracking-[0.2em] text-faint">Display code</div>
+                <div className="mt-2 text-lg font-semibold tracking-[0.2em]">
+                  {pairingCode ?? "Loading..."}
+                </div>
+                <div className="mt-1 text-xs text-muted">Enter this on the TV to join.</div>
               </div>
               <div className="mt-4">
                 <Toggle

@@ -22,6 +22,14 @@ export async function fetchState(): Promise<PublicStateResponse> {
   return (await res.json()) as PublicStateResponse;
 }
 
+export async function fetchPairingCode() {
+  const res = await fetch("/api/pairing");
+  if (!res.ok) {
+    throw new Error("Failed to load pairing code");
+  }
+  return (await res.json()) as { code: string };
+}
+
 export async function pair(code: string) {
   const res = await fetch("/api/control/pair", {
     method: "POST",

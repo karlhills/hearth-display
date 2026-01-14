@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { HearthState, PublicStateResponse } from "@hearth/shared";
-import { Card, SectionHeader } from "@hearth/ui";
+import { Button, Card, SectionHeader } from "@hearth/ui";
 import { subscribeToState } from "./sse";
 
 const fallbackState: HearthState = {
@@ -193,11 +193,24 @@ export function App() {
   const [qrStatus, setQrStatus] = useState<string>("loading");
   const [lanIp, setLanIp] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairInput, setPairInput] = useState("");
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [pairedDeviceId, setPairedDeviceId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("hearthDisplayDeviceId");
+  });
+
+  const displayOrigin = useMemo(() => {
+    const host = lanIp || window.location.hostname;
+    const port = window.location.port;
+    return `${window.location.protocol}//${host}${port ? `:${port}` : ""}`;
+  }, [lanIp]);
 
   const deviceIdFromUrl = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("device");
   }, []);
+  const displayDeviceId = deviceIdFromUrl ?? pairedDeviceId;
 
   const controlOrigin = useMemo(() => {
     const host = lanIp || window.location.hostname;
@@ -238,6 +251,11 @@ export function App() {
         applyTheme(data.state.theme, data.state.customTheme);
         if (deviceIdFromUrl && deviceIdFromUrl !== data.deviceId) {
           setError("This display URL does not match the registered device.");
+        }
+        if (!deviceIdFromUrl && pairedDeviceId && pairedDeviceId !== data.deviceId) {
+          window.localStorage.removeItem("hearthDisplayDeviceId");
+          setPairedDeviceId(null);
+          setError("Stored display pairing no longer matches this server.");
         }
       })
       .catch((err) => {
@@ -281,10 +299,10 @@ export function App() {
   }, [deviceIdFromUrl]);
 
   useEffect(() => {
-    if (!deviceIdFromUrl) return;
+    if (!displayDeviceId) return;
     if (error) return;
 
-    const unsubscribe = subscribeToState(deviceIdFromUrl, (next) => {
+    const unsubscribe = subscribeToState(displayDeviceId, (next) => {
       setState(next);
       applyTheme(next.theme, next.customTheme);
     });
@@ -292,7 +310,7 @@ export function App() {
     return () => {
       unsubscribe();
     };
-  }, [deviceIdFromUrl, error]);
+  }, [displayDeviceId, error]);
 
   const mergedPhotos = useMemo(() => {
     const sources = state.photoSources ?? { google: true, local: true };
@@ -339,21 +357,49 @@ export function App() {
   }, [controlUrl]);
 
   const resolvedDeviceId = deviceId ?? "";
+  const handlePairSubmit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!pairingCode) {
+      setPairError("Pairing code not available yet.");
+      return;
+    }
+    if (!deviceId) {
+      setPairError("Waiting for server to provide a device ID.");
+      return;
+    }
+    if (pairInput.trim() !== pairingCode) {
+      setPairError("Code does not match.");
+      return;
+    }
+    setPairError(null);
+    setPairedDeviceId(deviceId);
+    window.localStorage.setItem("hearthDisplayDeviceId", deviceId);
+  };
 
-  if (!deviceIdFromUrl) {
+  if (!displayDeviceId) {
     return (
       <div className="min-h-screen hearth-bg p-12 text-text">
         <div className="mx-auto max-w-2xl">
           <Card>
             <SectionHeader title="Hearth Display" />
-            <div className="mt-6 text-lg">Open the display on your TV with this URL:</div>
-            <div className="mt-4 rounded-xl border border-border bg-surface2 px-4 py-3 text-lg">
-              {resolvedDeviceId
-                ? `${displayOrigin}/display/?device=${resolvedDeviceId}`
-                : "Waiting for server..."}
-            </div>
+            <div className="mt-6 text-lg">Enter the server code to join this display:</div>
+            <form className="mt-4 flex flex-wrap items-center gap-3" onSubmit={handlePairSubmit}>
+              <input
+                className="w-40 rounded-xl border border-border bg-surface2 px-4 py-3 text-lg text-text"
+                placeholder="Code"
+                value={pairInput}
+                onChange={(event) => {
+                  setPairInput(event.target.value.toUpperCase());
+                  setPairError(null);
+                }}
+              />
+              <Button type="submit" variant="primary" disabled={!pairInput.trim()}>
+                Join
+              </Button>
+            </form>
+            {pairError ? <div className="mt-3 text-sm text-rose-300">{pairError}</div> : null}
             <div className="mt-6 text-sm text-muted">
-              Pair from your phone at /control and keep this tab open on the TV.
+              Get the code from the Hearth control page or the server logs.
             </div>
           </Card>
         </div>

@@ -91,7 +91,7 @@ GOOGLE_PHOTOS_REDIRECT_URI=http://localhost:8787/api/control/photos/google/callb
 Required scope (configured automatically by Hearth during OAuth):
 `https://www.googleapis.com/auth/photospicker.mediaitems.readonly`
 
-Complete the auth flow from the host machine itself (not a phone) so Google can redirect to localhost. Once connected, use `/control` → Photos → Choose photos to open the picker.
+Complete the auth flow from the host machine itself (not a phone) so Google can redirect to localhost. Google blocks private IP redirect URIs over HTTP, so `localhost` is the simplest local option. Once connected, use `/control` → Photos → Choose photos to open the picker.
 
 If you see a 403 with \"insufficient authentication scopes\", revoke the Hearth app at https://myaccount.google.com/permissions and reconnect to grant the Picker scope.
 
