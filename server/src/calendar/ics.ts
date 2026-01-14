@@ -3,14 +3,15 @@ import type { CalendarEvent } from "@hearth/shared";
 
 type IcsEvent = {
   type?: string;
-  start?: Date;
-  end?: Date;
+  start?: Date & { tz?: string };
+  end?: Date & { tz?: string };
   summary?: string;
   uid?: string;
   datetype?: "date" | "date-time";
   rrule?: { between: (start: Date, end: Date, inc: boolean) => Date[] };
   exdate?: Record<string, Date>;
   recurrences?: Record<string, IcsEvent>;
+  tz?: string;
 };
 
 export function parseIcsEvents(icsText: string, now = new Date()) {
@@ -26,8 +27,43 @@ export function parseIcsEvents(icsText: string, now = new Date()) {
     return `${year}-${month}-${day}`;
   };
 
+  const formatTimeZoneDate = (date: Date, timeZone?: string) => {
+    if (!timeZone) return formatLocalDate(date);
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date);
+      const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+      const month = parts.find((part) => part.type === "month")?.value ?? "01";
+      const day = parts.find((part) => part.type === "day")?.value ?? "01";
+      return `${year}-${month}-${day}`;
+    } catch {
+      return formatLocalDate(date);
+    }
+  };
+
   const formatLocalTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  };
+
+  const formatTimeZoneTime = (date: Date, timeZone?: string) => {
+    if (!timeZone) return formatLocalTime(date);
+    try {
+      return new Intl.DateTimeFormat([], {
+        timeZone,
+        hour: "numeric",
+        minute: "2-digit"
+      }).format(date);
+    } catch {
+      return formatLocalTime(date);
+    }
+  };
+
+  const resolveEventTimeZone = (item: IcsEvent) => {
+    return item.tz ?? item.start?.tz ?? item.end?.tz;
   };
 
   const isAllDayEvent = (item: IcsEvent) => {
@@ -50,10 +86,11 @@ export function parseIcsEvents(icsText: string, now = new Date()) {
     return Boolean(item.exdate && (item.exdate[dateKey] || item.exdate[dayKey]));
   };
 
-  const makeEvent = (item: IcsEvent, date: Date, key: string) => {
-    const isoDate = formatLocalDate(date);
+  const makeEvent = (item: IcsEvent, date: Date, key: string, timeSource: Date = date) => {
+    const timeZone = resolveEventTimeZone(item);
     const allDay = isAllDayEvent(item);
-    const timeLabel = allDay ? "" : `${formatLocalTime(date)} `;
+    const isoDate = formatTimeZoneDate(date, timeZone);
+    const timeLabel = allDay ? "" : `${formatTimeZoneTime(timeSource, timeZone)} `;
     const summary = item.summary ?? "Untitled";
     return {
       id: `${item.uid ?? key}-${isoDate}-${allDay ? "all" : date.toISOString()}`,
@@ -75,7 +112,7 @@ export function parseIcsEvents(icsText: string, now = new Date()) {
         if (shouldSkipDate(item, occurrence)) continue;
         const recurrence = item.recurrences?.[occurrenceKey];
         const eventItem = recurrence ?? item;
-        events.push(makeEvent(eventItem, occurrence, key));
+        events.push(makeEvent(eventItem, occurrence, key, eventItem.start ?? occurrence));
       }
       continue;
     }

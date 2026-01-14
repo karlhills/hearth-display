@@ -23,6 +23,7 @@ const emptyState: HearthState = {
     bg: "#0B0F14",
     surface: "#111827",
     surface2: "#0F172A",
+    cardOpacity: 1,
     calendarDay: "#0F172A",
     calendarDayMuted: "rgba(15, 23, 42, 0.6)",
     calendarToday: "#111827",
@@ -80,6 +81,7 @@ function applyTheme(theme: Theme, customTheme: HearthState["customTheme"]) {
     "bg",
     "surface",
     "surface2",
+    "cardOpacity",
     "calendarDay",
     "calendarDayMuted",
     "calendarToday",
@@ -93,31 +95,30 @@ function applyTheme(theme: Theme, customTheme: HearthState["customTheme"]) {
   ] as const;
   if (theme === "custom") {
     keys.forEach((key) => {
-      const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      root.style.setProperty(`--${cssKey}`, customTheme[key]);
+      const cssKey = key === "surface2" ? "surface-2" : key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      const value = customTheme[key];
+      root.style.setProperty(`--${cssKey}`, typeof value === "number" ? String(value) : value);
     });
-    root.style.setProperty("--bg-image", customTheme.backgroundImage ? `url("${customTheme.backgroundImage}")` : "none");
-    const positions: Record<HearthState["photoFocus"], string> = {
-      none: "center",
-      center: "center",
-      top: "top",
-      bottom: "bottom",
-      left: "left",
-      right: "right",
-      "top-left": "top left",
-      "top-right": "top right",
-      "bottom-left": "bottom left",
-      "bottom-right": "bottom right"
-    };
-    root.style.setProperty("--bg-position", positions[customTheme.backgroundPosition ?? "center"]);
   } else {
     keys.forEach((key) => {
-      const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      const cssKey = key === "surface2" ? "surface-2" : key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
       root.style.removeProperty(`--${cssKey}`);
     });
-    root.style.removeProperty("--bg-image");
-    root.style.removeProperty("--bg-position");
   }
+  root.style.setProperty("--bg-image", customTheme.backgroundImage ? `url("${customTheme.backgroundImage}")` : "none");
+  const positions: Record<HearthState["photoFocus"], string> = {
+    none: "center",
+    center: "center",
+    top: "top",
+    bottom: "bottom",
+    left: "left",
+    right: "right",
+    "top-left": "top left",
+    "top-right": "top right",
+    "bottom-left": "bottom left",
+    "bottom-right": "bottom right"
+  };
+  root.style.setProperty("--bg-position", positions[customTheme.backgroundPosition ?? "center"]);
 }
 
 function toHexColor(value: string) {
@@ -136,10 +137,15 @@ function toHexColor(value: string) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+function clampOpacity(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
 const defaultCustomTheme: HearthState["customTheme"] = {
   bg: "#0B0F14",
   surface: "#111827",
   surface2: "#0F172A",
+  cardOpacity: 1,
   calendarDay: "#0F172A",
   calendarDayMuted: "rgba(15, 23, 42, 0.6)",
   calendarToday: "#111827",
@@ -149,6 +155,25 @@ const defaultCustomTheme: HearthState["customTheme"] = {
   faint: "rgba(255, 255, 255, 0.45)",
   accent: "#2DD4BF",
   buttonText: "rgba(255, 255, 255, 0.92)",
+  buttonTextOnAccent: "#0B0F14",
+  backgroundImage: "",
+  backgroundPosition: "center"
+};
+
+const lightCustomTheme: HearthState["customTheme"] = {
+  bg: "#F6F7FB",
+  surface: "#FFFFFF",
+  surface2: "#F1F5F9",
+  cardOpacity: 1,
+  calendarDay: "#EEF2FF",
+  calendarDayMuted: "rgba(238, 242, 255, 0.6)",
+  calendarToday: "#FFFFFF",
+  border: "rgba(15, 23, 42, 0.1)",
+  text: "rgba(15, 23, 42, 0.92)",
+  muted: "rgba(15, 23, 42, 0.65)",
+  faint: "rgba(15, 23, 42, 0.45)",
+  accent: "#2DD4BF",
+  buttonText: "rgba(15, 23, 42, 0.92)",
   buttonTextOnAccent: "#0B0F14",
   backgroundImage: "",
   backgroundPosition: "center"
@@ -184,6 +209,8 @@ export function App() {
   const layoutDirtyRef = useRef(false);
   const layoutSaveTimer = useRef<number | null>(null);
   const [customThemeOpen, setCustomThemeOpen] = useState(false);
+  const [backgroundThemeOpen, setBackgroundThemeOpen] = useState(false);
+  const [themeHintOpen, setThemeHintOpen] = useState<string | null>(null);
   const [customDraft, setCustomDraft] = useState<HearthState["customTheme"]>(defaultCustomTheme);
 
   const displayOrigin = useMemo(() => {
@@ -347,9 +374,32 @@ export function App() {
   const handleResetCustomTheme = async () => {
     try {
       setSaving(true);
-      const cleared = { ...defaultCustomTheme };
-      const result = await clearThemeBackground();
-      cleared.backgroundImage = result.url || "";
+      const cleared = {
+        ...defaultCustomTheme,
+        backgroundImage: customDraft.backgroundImage,
+        backgroundPosition: customDraft.backgroundPosition
+      };
+      setCustomDraft(cleared);
+      const updated = await updateState({ theme: "custom", customTheme: cleared });
+      setState(updated);
+      applyTheme(updated.theme, updated.customTheme);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to reset theme.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetLightTheme = async () => {
+    try {
+      setSaving(true);
+      const cleared = {
+        ...lightCustomTheme,
+        backgroundImage: customDraft.backgroundImage,
+        backgroundPosition: customDraft.backgroundPosition
+      };
       setCustomDraft(cleared);
       const updated = await updateState({ theme: "custom", customTheme: cleared });
       setState(updated);
@@ -825,7 +875,7 @@ export function App() {
 
             <Card>
               <SectionHeader title="Theme" />
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
                   variant={state.theme === "dark" ? "primary" : "secondary"}
                   onClick={() => handleThemeToggle("dark")}
@@ -849,6 +899,16 @@ export function App() {
                   disabled={saving}
                 >
                   Custom
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setCustomDraft(state.customTheme);
+                    setBackgroundThemeOpen(true);
+                  }}
+                  disabled={saving}
+                >
+                  Background Image
                 </Button>
               </div>
             </Card>
@@ -1306,24 +1366,42 @@ export function App() {
             <div className="mt-4 grid gap-4 text-sm">
               {(
                 [
-                  ["bg", "Background"],
-                  ["surface", "Surface"],
-                  ["surface2", "Surface 2"],
-                  ["calendarDay", "Calendar Day"],
-                  ["calendarDayMuted", "Calendar Day (Muted)"],
-                  ["calendarToday", "Calendar Today"],
-                  ["border", "Border"],
-                  ["text", "Text"],
-                  ["buttonText", "Button Text"],
-                  ["buttonTextOnAccent", "Button Text (Accent)"],
-                  ["muted", "Muted"],
-                  ["faint", "Faint"],
-                  ["accent", "Accent"]
+                  ["bg", "Background", "Base page background behind everything."],
+                  ["surface", "Surface", "Main card background (panels, sections, calendar container)."],
+                  ["surface2", "Surface 2", "Secondary card background (inputs, pills, small panels)."],
+                  ["calendarDay", "Calendar Day", "Day cell background in the calendar grid."],
+                  ["calendarDayMuted", "Calendar Day (Muted)", "Muted day cells (outside current month)."],
+                  ["calendarToday", "Calendar Today", "Highlight for the current day cell."],
+                  ["border", "Border", "Borders around cards, inputs, and tables."],
+                  ["text", "Text", "Primary text color."],
+                  ["buttonText", "Button Text", "Text on primary/secondary buttons."],
+                  ["buttonTextOnAccent", "Button Text (Accent)", "Text on accent-colored buttons."],
+                  ["muted", "Muted", "Secondary text (labels, subheadings)."],
+                  ["faint", "Faint", "Tertiary text (helper hints, subtle labels)."],
+                  ["accent", "Accent", "Highlights, icons, and focus accents."]
                 ] as const
-              ).map(([key, label]) => (
+              ).map(([key, label, hint]) => (
                 <label key={key} className="grid gap-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-faint" style={{ color: "var(--text)" }}>
-                    {label}
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs uppercase tracking-[0.2em] text-faint" style={{ color: "var(--text)" }}>
+                      {label}
+                    </span>
+                    <span className="relative inline-flex items-center">
+                      <button
+                        type="button"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface2 text-[10px] font-semibold text-muted"
+                        aria-label={`${label} info`}
+                        onClick={() => setThemeHintOpen(themeHintOpen === key ? null : key)}
+                        onBlur={() => setThemeHintOpen(null)}
+                      >
+                        i
+                      </button>
+                      {themeHintOpen === key ? (
+                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-56 -translate-x-1/2 rounded-lg border border-border bg-surface px-3 py-2 text-xs text-muted shadow-lg">
+                          {hint}
+                        </span>
+                      ) : null}
+                    </span>
                   </span>
                   <div className="flex items-center gap-3">
                     <input
@@ -1341,6 +1419,77 @@ export function App() {
                 </label>
               ))}
             </div>
+            <div className="mt-6">
+              <div className="text-xs uppercase tracking-[0.2em] text-faint" style={{ color: "var(--text)" }}>
+                Card Opacity
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={customDraft.cardOpacity}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    setCustomDraft({
+                      ...customDraft,
+                      cardOpacity: Number.isFinite(next) ? clampOpacity(next) : customDraft.cardOpacity
+                    });
+                  }}
+                  className="w-full"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={customDraft.cardOpacity}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    setCustomDraft({
+                      ...customDraft,
+                      cardOpacity: Number.isFinite(next) ? clampOpacity(next) : customDraft.cardOpacity
+                    });
+                  }}
+                  className="w-24 rounded-xl border border-border bg-surface2 px-4 py-2 text-sm text-text"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setCustomThemeOpen(false);
+                  setCustomDraft(state.customTheme);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button variant="secondary" onClick={handleResetCustomTheme} disabled={saving}>
+                Reset to Dark
+              </Button>
+              <Button variant="secondary" onClick={handleResetLightTheme} disabled={saving}>
+                Reset to Light
+              </Button>
+              <Button variant="primary" onClick={handleSaveCustomTheme} disabled={saving}>
+                Save Theme
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {backgroundThemeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4">
+          <div
+            className="w-full max-h-[85vh] max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface p-6 text-text shadow-xl"
+            style={{
+              backgroundColor: "var(--surface)",
+              color: "var(--text)"
+            }}
+          >
+            <SectionHeader title="Background Image" />
             <div className="mt-6">
               <div className="text-xs uppercase tracking-[0.2em] text-faint" style={{ color: "var(--text)" }}>
                 Background Image
@@ -1396,18 +1545,12 @@ export function App() {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setCustomThemeOpen(false);
+                  setBackgroundThemeOpen(false);
                   setCustomDraft(state.customTheme);
                 }}
                 disabled={saving}
               >
-                Cancel
-              </Button>
-              <Button variant="secondary" onClick={handleResetCustomTheme} disabled={saving}>
-                Reset to Dark
-              </Button>
-              <Button variant="primary" onClick={handleSaveCustomTheme} disabled={saving}>
-                Save Theme
+                Close
               </Button>
             </div>
           </div>

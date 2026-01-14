@@ -62,6 +62,7 @@ export function createDefaultState(): HearthState {
       bg: "#0B0F14",
       surface: "#111827",
       surface2: "#0F172A",
+      cardOpacity: 1,
       calendarDay: "#0F172A",
       calendarDayMuted: "rgba(15, 23, 42, 0.6)",
       calendarToday: "#111827",

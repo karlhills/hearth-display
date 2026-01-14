@@ -34,6 +34,7 @@ export type CustomTheme = {
   bg: string;
   surface: string;
   surface2: string;
+  cardOpacity: number;
   calendarDay: string;
   calendarDayMuted: string;
   calendarToday: string;

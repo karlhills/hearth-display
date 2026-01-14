@@ -23,6 +23,7 @@ const fallbackState: HearthState = {
     bg: "#0B0F14",
     surface: "#111827",
     surface2: "#0F172A",
+    cardOpacity: 1,
     calendarDay: "#0F172A",
     calendarDayMuted: "rgba(15, 23, 42, 0.6)",
     calendarToday: "#111827",
@@ -58,6 +59,13 @@ function formatDate(date: Date) {
   return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
+function toLocalIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function iconClassForCode(code: number) {
   if (code === 0) return "wi-day-sunny";
   if (code >= 1 && code <= 3) return "wi-day-cloudy";
@@ -76,6 +84,7 @@ function applyTheme(theme: HearthState["theme"], customTheme: HearthState["custo
     "bg",
     "surface",
     "surface2",
+    "cardOpacity",
     "calendarDay",
     "calendarDayMuted",
     "calendarToday",
@@ -89,31 +98,30 @@ function applyTheme(theme: HearthState["theme"], customTheme: HearthState["custo
   ] as const;
   if (theme === "custom") {
     keys.forEach((key) => {
-      const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      root.style.setProperty(`--${cssKey}`, customTheme[key]);
+      const cssKey = key === "surface2" ? "surface-2" : key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      const value = customTheme[key];
+      root.style.setProperty(`--${cssKey}`, typeof value === "number" ? String(value) : value);
     });
-    root.style.setProperty("--bg-image", customTheme.backgroundImage ? `url("${customTheme.backgroundImage}")` : "none");
-    const positions: Record<HearthState["photoFocus"], string> = {
-      none: "center",
-      center: "center",
-      top: "top",
-      bottom: "bottom",
-      left: "left",
-      right: "right",
-      "top-left": "top left",
-      "top-right": "top right",
-      "bottom-left": "bottom left",
-      "bottom-right": "bottom right"
-    };
-    root.style.setProperty("--bg-position", positions[customTheme.backgroundPosition ?? "center"]);
   } else {
     keys.forEach((key) => {
-      const cssKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      const cssKey = key === "surface2" ? "surface-2" : key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
       root.style.removeProperty(`--${cssKey}`);
     });
-    root.style.removeProperty("--bg-image");
-    root.style.removeProperty("--bg-position");
   }
+  root.style.setProperty("--bg-image", customTheme.backgroundImage ? `url("${customTheme.backgroundImage}")` : "none");
+  const positions: Record<HearthState["photoFocus"], string> = {
+    none: "center",
+    center: "center",
+    top: "top",
+    bottom: "bottom",
+    left: "left",
+    right: "right",
+    "top-left": "top left",
+    "top-right": "top right",
+    "bottom-left": "bottom left",
+    "bottom-right": "bottom right"
+  };
+  root.style.setProperty("--bg-position", positions[customTheme.backgroundPosition ?? "center"]);
 }
 
 function EventTitle({ title }: { title: string }) {
@@ -411,7 +419,7 @@ export function App() {
     return day;
   });
 
-  const todayIso = today.toISOString().slice(0, 10);
+  const todayIso = toLocalIsoDate(today);
   const eventsByDate = state.events.reduce<Record<string, typeof state.events>>((acc, event) => {
     acc[event.date] = acc[event.date] ? [...acc[event.date], event] : [event];
     return acc;
@@ -451,8 +459,10 @@ export function App() {
     <div className="min-h-screen hearth-bg p-12 text-text">
       <div className="mx-auto flex min-h-[calc(100vh-96px)] max-w-6xl flex-col gap-8">
         <header className="flex items-center justify-between gap-6">
-          <div>
-            <div className="text-6xl font-semibold">{formatTime(now)}</div>
+          <div className="flex flex-col justify-center rounded-2xl border border-border bg-surface2 px-6 py-4">
+            <div className="text-[clamp(2.5rem,6vw,3.5rem)] font-semibold whitespace-nowrap">
+              {formatTime(now)}
+            </div>
             <div className="mt-2 text-xl text-muted">{formatDate(now)}</div>
           </div>
           <div className="flex items-stretch gap-4">
@@ -494,12 +504,12 @@ export function App() {
               </div>
             ) : null}
             {state.qrEnabled && controlQr ? (
-              <div className="ml-4 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
+              <div className="ml-2 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
                 <img src={controlQr} alt="QR code for control" className="h-16 w-16 rounded-lg" />
                 {pairingCode ? <div className="text-xs text-muted">Code {pairingCode}</div> : null}
               </div>
             ) : state.qrEnabled ? (
-              <div className="ml-4 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
+              <div className="ml-2 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
                 <div className="h-16 w-16 rounded-lg border border-dashed border-border bg-surface" />
                 <div className="text-xs text-faint">
                   QR {qrStatus}
@@ -519,7 +529,7 @@ export function App() {
                   {state.calendarView === "week" ? (
                     <div className="mt-6 grid grid-cols-7 gap-3 text-sm">
                       {weekDays.map((day) => {
-                        const iso = day.toISOString().slice(0, 10);
+                        const iso = toLocalIsoDate(day);
                         const isToday = iso === todayIso;
                         const events = eventsByDate[iso] ?? [];
                         return (
@@ -560,7 +570,7 @@ export function App() {
                   ) : (
                     <div className="mt-6 grid grid-cols-7 gap-2 text-xs">
                       {monthDays.map((day) => {
-                        const iso = day.toISOString().slice(0, 10);
+                        const iso = toLocalIsoDate(day);
                         const events = eventsByDate[iso] ?? [];
                         const isCurrentMonth = day.getMonth() === today.getMonth();
                         const isToday = iso === todayIso;

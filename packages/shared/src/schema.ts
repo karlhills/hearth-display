@@ -55,6 +55,7 @@ export const customThemeSchema = z.object({
   bg: z.string().min(1),
   surface: z.string().min(1),
   surface2: z.string().min(1),
+  cardOpacity: z.number().min(0).max(1).default(1),
   calendarDay: z.string().min(1),
   calendarDayMuted: z.string().min(1),
   calendarToday: z.string().min(1),
