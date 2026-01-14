@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, HearthState, Theme } from "@hearth/shared";
 import { Button, Card, SectionHeader, Toggle } from "@hearth/ui";
-import { clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPairingCode, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
+import { clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPairingCode, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, reloadDisplay, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
 
 const emptyState: HearthState = {
   theme: "dark",
@@ -467,6 +467,23 @@ export function App() {
     }
   };
 
+  const handleBackgroundPositionChange = async (nextPosition: HearthState["photoFocus"]) => {
+    try {
+      setSaving(true);
+      const nextTheme = { ...customDraft, backgroundPosition: nextPosition };
+      setCustomDraft(nextTheme);
+      const updated = await updateState({ customTheme: nextTheme });
+      setState(updated);
+      applyTheme(updated.theme, updated.customTheme);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update background position.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleToggle = async (module: keyof HearthState["modules"], enabled: boolean) => {
     try {
       setSaving(true);
@@ -787,7 +804,19 @@ export function App() {
   const handleCopyUrl = async () => {
     if (!deviceId) return;
     try {
-      await navigator.clipboard.writeText(displayUrl);
+      if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(displayUrl);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = displayUrl;
+        input.setAttribute("readonly", "");
+        input.style.position = "absolute";
+        input.style.left = "-9999px";
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
       setError(null);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 1500);
@@ -870,17 +899,20 @@ export function App() {
           <>
             <Card>
               <SectionHeader title="Display" />
-              <div className="mt-4 text-sm text-muted">Open this URL on your TV.</div>
-              <div className="mt-4 flex items-stretch overflow-hidden rounded-xl border border-border bg-surface2 text-sm">
-                <div className="flex-1 px-4 py-3">
-                  <span className="block break-all">{displayUrl || "Loading device URL..."}</span>
-                </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
                   variant="secondary"
-                  className="rounded-none border-0 px-4"
-                  onClick={handleCopyUrl}
+                  onClick={async () => {
+                    try {
+                      await reloadDisplay();
+                      setError(null);
+                    } catch (err) {
+                      console.error(err);
+                      setError("Unable to reload display.");
+                    }
+                  }}
                 >
-                  {copySuccess ? "Copied" : "Copy URL"}
+                  Reload display
                 </Button>
               </div>
               <div className="mt-4 rounded-xl border border-border bg-surface2 px-4 py-3 text-sm">
@@ -888,7 +920,13 @@ export function App() {
                 <div className="mt-2 text-lg font-semibold tracking-[0.2em]">
                   {pairingCode ?? "Loading..."}
                 </div>
-                <div className="mt-1 text-xs text-muted">Enter this on the TV to join.</div>
+                <div className="mt-1 text-xs text-muted">
+                  Visit{" "}
+                  <a className="underline" href={`${displayOrigin}/display`} target="_blank" rel="noreferrer">
+                    {displayOrigin}/display
+                  </a>{" "}
+                  and enter this code on the screen to join.
+                </div>
               </div>
               <div className="mt-4">
                 <Toggle
@@ -1614,12 +1652,7 @@ export function App() {
               <select
                 className="mt-2 w-full rounded-xl border border-border bg-surface2 px-4 py-2 text-sm text-text"
                 value={customDraft.backgroundPosition}
-                onChange={(event) =>
-                  setCustomDraft({
-                    ...customDraft,
-                    backgroundPosition: event.target.value as HearthState["photoFocus"]
-                  })
-                }
+                onChange={(event) => handleBackgroundPositionChange(event.target.value as HearthState["photoFocus"])}
               >
                 <option value="center">Center</option>
                 <option value="top">Top</option>

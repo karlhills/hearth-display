@@ -46,6 +46,15 @@ export function createSseManager() {
     }
   }
 
+  function broadcastEvent(deviceId: string, event: string, data: unknown = {}) {
+    const set = clients.get(deviceId);
+    if (!set) return;
+    const payload = JSON.stringify(data);
+    for (const client of set) {
+      client.reply.raw.write(`event: ${event}\ndata: ${payload}\n\n`);
+    }
+  }
+
   function broadcastAll(state: HearthState) {
     for (const deviceId of clients.keys()) {
       broadcast(deviceId, state);
@@ -55,6 +64,7 @@ export function createSseManager() {
   return {
     addClient,
     broadcast,
-    broadcastAll
+    broadcastAll,
+    broadcastEvent
   };
 }

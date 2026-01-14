@@ -80,6 +80,18 @@ export async function toggleModule(module: string, enabled: boolean) {
   return (await res.json()) as HearthState;
 }
 
+export async function reloadDisplay() {
+  const res = await fetch("/api/control/display/reload", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({})
+  });
+  if (!res.ok) {
+    throw new Error("Failed to reload display");
+  }
+  return (await res.json()) as { ok: true };
+}
+
 export async function updateLayout(layout: HearthState["layout"]) {
   const res = await fetch("/api/control/layout", {
     method: "POST",

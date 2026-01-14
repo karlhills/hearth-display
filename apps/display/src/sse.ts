@@ -1,6 +1,10 @@
 import type { HearthState } from "@hearth/shared";
 
-export function subscribeToState(deviceId: string, onState: (state: HearthState) => void) {
+export function subscribeToState(
+  deviceId: string,
+  onState: (state: HearthState) => void,
+  onReload?: () => void
+) {
   const source = new EventSource(`/api/display/${deviceId}/events`);
 
   source.addEventListener("state", (event) => {
@@ -11,6 +15,12 @@ export function subscribeToState(deviceId: string, onState: (state: HearthState)
       console.error("Failed to parse SSE state", error);
     }
   });
+
+  if (onReload) {
+    source.addEventListener("reload", () => {
+      onReload();
+    });
+  }
 
   source.onerror = () => {
     console.warn("SSE connection lost");

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { HearthDb } from "../storage/db.js";
-import { loadState, saveState } from "../storage/db.js";
+import { getSetting, loadState, saveState } from "../storage/db.js";
 import { stateUpdateSchema, toggleModuleSchema, layoutUpdateSchema, pairingSchema } from "@hearth/shared";
 import type { createSseManager } from "../realtime/sse.js";
 import { signToken, verifyToken } from "../auth/token.js";
@@ -134,6 +134,20 @@ export function registerControlRoutes(
     await saveState(db, next);
     sse.broadcastAll(next);
     return next;
+  });
+
+  fastify.post("/api/control/display/reload", async (request, reply) => {
+    if (!requireAuth(tokenSecret, request.headers.authorization)) {
+      reply.code(401);
+      return { error: "Unauthorized" };
+    }
+    const storedDeviceId = await getSetting(db, "deviceId");
+    if (!storedDeviceId) {
+      reply.code(400);
+      return { error: "Device ID missing" };
+    }
+    sse.broadcastEvent(storedDeviceId, "reload", { ts: Date.now() });
+    return { ok: true };
   });
 
   fastify.get("/api/control/calendar/settings", async (request, reply) => {

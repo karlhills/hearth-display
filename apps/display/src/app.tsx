@@ -313,10 +313,16 @@ export function App() {
     if (!displayDeviceId) return;
     if (error) return;
 
-    const unsubscribe = subscribeToState(displayDeviceId, (next) => {
-      setState(next);
-      applyTheme(next.theme, next.customTheme);
-    });
+    const unsubscribe = subscribeToState(
+      displayDeviceId,
+      (next) => {
+        setState(next);
+        applyTheme(next.theme, next.customTheme);
+      },
+      () => {
+        window.location.reload();
+      }
+    );
 
     return () => {
       unsubscribe();
