@@ -22,6 +22,7 @@ const fallbackState: HearthState = {
   photoShuffle: true,
   photoFocus: "center",
   photoTiles: 1,
+  photoTransitionMs: 12000,
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -69,15 +70,42 @@ function toLocalIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function iconClassForCode(code: number) {
-  if (code === 0) return "wi-day-sunny";
-  if (code >= 1 && code <= 3) return "wi-day-cloudy";
-  if (code === 45 || code === 48) return "wi-fog";
-  if ((code >= 51 && code <= 55) || (code >= 80 && code <= 82)) return "wi-showers";
-  if (code >= 61 && code <= 65) return "wi-rain";
-  if (code >= 71 && code <= 75) return "wi-snow";
-  if (code >= 95) return "wi-thunderstorm";
-  return "wi-cloudy";
+function parseLocalDateString(value: string) {
+  if (value.includes("T")) {
+    return new Date(value);
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function iconAssetForCode(code: number) {
+  if (code === 0) return "clear_day.svg";
+  if (code === 1) return "mostly_clear_day.svg";
+  if (code === 2) return "partly_cloudy_day.svg";
+  if (code === 3) return "mostly_cloudy.svg";
+  if (code === 45 || code === 48) return "fog.svg";
+  if (code >= 51 && code <= 55) return "drizzle.svg";
+  if (code >= 56 && code <= 57) return "freezing_drizzle.svg";
+  if (code === 61) return "rain_light.svg";
+  if (code === 63) return "rain.svg";
+  if (code === 65) return "rain_heavy.svg";
+  if (code === 66) return "freezing_rain_light.svg";
+  if (code === 67) return "freezing_rain_heavy.svg";
+  if (code === 71) return "snow_light.svg";
+  if (code === 73) return "snow.svg";
+  if (code === 75) return "snow_heavy.svg";
+  if (code === 77) return "ice_pellets.svg";
+  if (code === 80) return "rain_light.svg";
+  if (code === 81) return "rain.svg";
+  if (code === 82) return "rain_heavy.svg";
+  if (code === 85) return "snow_light.svg";
+  if (code === 86) return "snow_heavy.svg";
+  if (code >= 95) return "tstorm.svg";
+  return "cloudy.svg";
+}
+
+function weatherIconSrc(code: number) {
+  return `${import.meta.env.BASE_URL}weather-icons/${iconAssetForCode(code)}`;
 }
 
 function applyTheme(theme: HearthState["theme"], customTheme: HearthState["customTheme"]) {
@@ -348,6 +376,8 @@ export function App() {
   }, [state.photoSources, state.photosGoogle, state.photosLocal, state.photos, state.photoShuffle]);
 
   const photoTileCount = Math.min(Math.max(state.photoTiles ?? 1, 1), 4);
+  const photoTransitionMs = Math.min(Math.max(state.photoTransitionMs ?? 12000, 4000), 60000);
+  const photoFadeMs = Math.min(4000, Math.max(800, Math.round(photoTransitionMs * 0.35)));
 
   useEffect(() => {
     if (!photoTileCount) {
@@ -366,7 +396,8 @@ export function App() {
     if (!mergedPhotos.length || !photoTileCount) return;
     const timers: Array<ReturnType<typeof setTimeout>> = [];
     const schedule = (tileIndex: number) => {
-      const delay = 8000 + Math.random() * 6000;
+      const jitter = photoTransitionMs * 0.3;
+      const delay = Math.max(1500, photoTransitionMs - jitter + Math.random() * jitter * 2);
       const timer = setTimeout(() => {
         setPhotoIndices((prev) => {
           if (!mergedPhotos.length) return prev;
@@ -385,7 +416,7 @@ export function App() {
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
     };
-  }, [mergedPhotos, photoTileCount]);
+  }, [mergedPhotos, photoTileCount, photoTransitionMs]);
 
   useEffect(() => {
     let active = true;
@@ -551,7 +582,7 @@ export function App() {
   return (
     <div className="min-h-screen hearth-bg p-6 text-text">
       <div className="mx-auto flex min-h-[calc(100vh-96px)] max-w-6xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-6">
+        <header className="flex items-stretch justify-between gap-6">
           <div className="flex flex-col justify-center rounded-2xl border border-border bg-surface2 px-6 py-4">
             <div className="text-[clamp(2.5rem,6vw,3.5rem)] font-semibold whitespace-nowrap">
               {formatTime(now)}
@@ -562,12 +593,14 @@ export function App() {
             {state.modules.weather || state.weatherForecastEnabled ? (
               <div className="flex items-stretch gap-4">
                 {state.modules.weather ? (
-                  <div className="rounded-2xl border border-border bg-surface2 px-5 py-3 text-right">
+                  <div className="flex flex-col justify-center rounded-2xl border border-border bg-surface2 px-6 py-4 text-right">
                     <div className="text-3xl font-semibold">{state.weather.temp}</div>
                     <div className="mt-2 flex items-center justify-end">
-                      <i
-                        className={`wi ${iconClassForCode(state.weather.code)} text-2xl text-accent`}
+                      <img
+                        src={weatherIconSrc(state.weather.code)}
+                        alt={state.weather.summary}
                         title={state.weather.summary}
+                        className="h-8 w-8"
                       />
                       <span className="sr-only">{state.weather.summary}</span>
                     </div>
@@ -575,17 +608,22 @@ export function App() {
                   </div>
                 ) : null}
                 {state.weatherForecastEnabled ? (
-                  <div className="rounded-2xl border border-border bg-surface2 px-5 py-3">
+                  <div className="flex flex-col justify-center rounded-2xl border border-border bg-surface2 px-6 py-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-faint">5-Day</div>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-muted">
+                    <div className="mt-3 flex items-center gap-5 text-sm text-muted">
                       {state.forecast.length ? (
                         state.forecast.map((day) => (
-                          <div key={day.date} className="flex flex-col items-start gap-1">
-                            <div className="text-text">
-                              {new Date(day.date).toLocaleDateString([], { weekday: "short" })}
+                          <div key={day.date} className="flex flex-col items-start gap-2">
+                            <div className="text-base font-semibold text-text">
+                              {parseLocalDateString(day.date).toLocaleDateString([], { weekday: "short" })}
                             </div>
-                            <i className={`wi ${iconClassForCode(day.code)} text-lg text-accent`} title={day.summary} />
-                            <div className="text-text">{day.high}/{day.low}</div>
+                            <img
+                              src={weatherIconSrc(day.code)}
+                              alt={day.summary}
+                              title={day.summary}
+                              className="h-8 w-8"
+                            />
+                            <div className="text-sm font-semibold text-text">{day.high}/{day.low}</div>
                           </div>
                         ))
                       ) : (
@@ -594,20 +632,6 @@ export function App() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-            ) : null}
-            {state.qrEnabled && controlQr ? (
-              <div className="ml-2 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
-                <img src={controlQr} alt="QR code for control" className="h-16 w-16 rounded-lg" />
-                {pairingCode ? <div className="text-xs text-muted">Code {pairingCode}</div> : null}
-              </div>
-            ) : state.qrEnabled ? (
-              <div className="ml-2 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-4 py-3 text-center self-stretch">
-                <div className="h-16 w-16 rounded-lg border border-dashed border-border bg-surface" />
-                <div className="text-xs text-faint">
-                  QR {qrStatus}
-                  {pairingCode ? ` · Code ${pairingCode}` : ""}
-                </div>
               </div>
             ) : null}
           </div>
@@ -737,10 +761,13 @@ export function App() {
                               src={resolvePhotoUrl(photo)}
                               alt="Family memory"
                               className={[
-                                "absolute inset-0 h-full w-full object-cover transition-opacity duration-[12000ms]",
+                                "absolute inset-0 h-full w-full object-cover transition-opacity",
                                 idx === activeIndex ? "opacity-100" : "opacity-0"
                               ].join(" ")}
-                              style={state.photoFocus === "none" ? undefined : { objectPosition: focusMap[state.photoFocus] }}
+                              style={{
+                                transitionDuration: `${photoFadeMs}ms`,
+                                ...(state.photoFocus === "none" ? {} : { objectPosition: focusMap[state.photoFocus] })
+                              }}
                             />
                           ))}
                         </div>
@@ -755,6 +782,20 @@ export function App() {
           })}
         </div>
       </div>
+      {state.qrEnabled && controlQr ? (
+        <div className="fixed bottom-4 right-4 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-3 py-3 text-center">
+          <img src={controlQr} alt="QR code for control" className="h-16 w-16 rounded-lg" />
+          {pairingCode ? <div className="text-[11px] text-muted">Code {pairingCode}</div> : null}
+        </div>
+      ) : state.qrEnabled ? (
+        <div className="fixed bottom-4 right-4 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface2 px-3 py-3 text-center">
+          <div className="h-16 w-16 rounded-lg border border-dashed border-border bg-surface" />
+          <div className="text-[11px] text-faint">
+            QR {qrStatus}
+            {pairingCode ? ` · Code ${pairingCode}` : ""}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

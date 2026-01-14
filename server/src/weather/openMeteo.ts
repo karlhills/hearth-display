@@ -75,13 +75,14 @@ export async function fetchWeatherBundle(lat: number, lon: number, unit: "f" | "
       temperature_2m_min: number[];
       weather_code: number[];
     };
+    utc_offset_seconds?: number;
   };
 
   if (!data.current || !data.daily) {
     throw new Error("Weather data missing");
   }
 
-  return { current: data.current, daily: data.daily };
+  return { current: data.current, daily: data.daily, utcOffsetSeconds: data.utc_offset_seconds };
 }
 
 export function buildWeatherInfo(location: GeoResult, temp: number, code: number, unit: "f" | "c"): WeatherInfo {
@@ -95,16 +96,30 @@ export function buildWeatherInfo(location: GeoResult, temp: number, code: number
   };
 }
 
-export function buildForecast(daily: {
+function formatUtcOffset(seconds?: number) {
+  if (typeof seconds !== "number" || Number.isNaN(seconds)) return "";
+  if (seconds === 0) return "Z";
+  const sign = seconds >= 0 ? "+" : "-";
+  const totalMinutes = Math.abs(Math.round(seconds / 60));
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+  return `${sign}${hours}:${minutes}`;
+}
+
+export function buildForecast(
+  daily: {
   time: string[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
   weather_code: number[];
-}) {
+  },
+  utcOffsetSeconds?: number
+) {
+  const offset = formatUtcOffset(utcOffsetSeconds);
   return daily.time.slice(0, 5).map((date, index) => {
     const code = daily.weather_code[index];
     return {
-      date,
+      date: offset ? `${date}T00:00:00${offset}` : date,
       high: `${Math.round(daily.temperature_2m_max[index])}°`,
       low: `${Math.round(daily.temperature_2m_min[index])}°`,
       summary: WEATHER_LABELS[code] ?? "Weather",

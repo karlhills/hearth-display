@@ -61,6 +61,7 @@ export function createDefaultState(): HearthState {
     photoShuffle: true,
     photoFocus: "center",
     photoTiles: 1,
+    photoTransitionMs: 12000,
     customTheme: {
       bg: "#0B0F14",
       surface: "#111827",
@@ -118,6 +119,7 @@ export function ensureStateDefaults(state: HearthState): HearthState {
     photoShuffle: state.photoShuffle ?? defaults.photoShuffle,
     photoFocus: state.photoFocus ?? defaults.photoFocus,
     photoTiles: state.photoTiles ?? defaults.photoTiles,
+    photoTransitionMs: state.photoTransitionMs ?? defaults.photoTransitionMs,
     customTheme: {
       ...defaults.customTheme,
       ...(state.customTheme ?? {})

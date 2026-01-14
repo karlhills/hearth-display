@@ -19,7 +19,7 @@ export async function syncWeather(db: HearthDb, query: string) {
   const location = await geocodeLocation(query);
   const bundle = await fetchWeatherBundle(location.latitude, location.longitude, unit);
   const weather = buildWeatherInfo(location, bundle.current.temperature_2m, bundle.current.weather_code, unit);
-  const forecast = buildForecast(bundle.daily);
+  const forecast = buildForecast(bundle.daily, bundle.utcOffsetSeconds);
   const next = {
     ...state,
     weather,

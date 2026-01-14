@@ -22,6 +22,7 @@ const emptyState: HearthState = {
   photoShuffle: true,
   photoFocus: "center",
   photoTiles: 1,
+  photoTransitionMs: 12000,
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -188,6 +189,10 @@ export function App() {
   const [pairCode, setPairCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [photoTransitionDraft, setPhotoTransitionDraft] = useState(() =>
+    Math.round((emptyState.photoTransitionMs ?? 12000) / 1000)
+  );
+  const [photoTransitionDirty, setPhotoTransitionDirty] = useState(false);
   const [noteDraft, setNoteDraft] = useState(emptyState.note);
   const [noteTitleDraft, setNoteTitleDraft] = useState(emptyState.noteTitle);
   const [deviceId, setDeviceId] = useState("");
@@ -196,7 +201,7 @@ export function App() {
   const [calendarSyncing, setCalendarSyncing] = useState(false);
   const [weatherQuery, setWeatherQuery] = useState("");
   const [weatherSyncing, setWeatherSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "layout" | "calendar" | "photos" | "weather" | "about">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "layout" | "calendar" | "photos" | "weather" | "note">("general");
   const noteRef = useRef<HTMLDivElement | null>(null);
   const [googleStatus, setGoogleStatus] = useState<{ connected: boolean }>({
     connected: false
@@ -226,6 +231,7 @@ export function App() {
   const displayUrl = useMemo(() => {
     return deviceId ? `${displayOrigin}/display/?device=${deviceId}` : "";
   }, [deviceId, displayOrigin]);
+  const photoTransitionSeconds = Math.round((state.photoTransitionMs ?? 12000) / 1000);
 
   const googleAuthUrl = useMemo(() => {
     const authToken = token || getStoredToken();
@@ -313,12 +319,40 @@ export function App() {
   }, [token, state.theme, state.customTheme]);
 
   useEffect(() => {
-    if (activeTab !== "general") return;
+    if (activeTab !== "note") return;
     if (!noteRef.current) return;
     if (noteRef.current.innerHTML !== noteDraft) {
       noteRef.current.innerHTML = noteDraft || "";
     }
   }, [noteDraft, activeTab]);
+
+  useEffect(() => {
+    if (photoTransitionDirty) return;
+    if (photoTransitionDraft !== photoTransitionSeconds) {
+      setPhotoTransitionDraft(photoTransitionSeconds);
+    }
+  }, [photoTransitionDirty, photoTransitionDraft, photoTransitionSeconds]);
+
+  useEffect(() => {
+    if (!photoTransitionDirty) return;
+    const timer = window.setTimeout(() => {
+      const run = async () => {
+        try {
+          const updated = await updateState({ photoTransitionMs: photoTransitionDraft * 1000 });
+          setState(updated);
+          setError(null);
+        } catch (err) {
+          console.error(err);
+          setError("Failed to update photo transition.");
+          setPhotoTransitionDraft(photoTransitionSeconds);
+        } finally {
+          setPhotoTransitionDirty(false);
+        }
+      };
+      void run();
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [photoTransitionDirty, photoTransitionDraft, photoTransitionSeconds]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -883,7 +917,7 @@ export function App() {
               { key: "calendar", label: "Calendar" },
               { key: "photos", label: "Photos" },
               { key: "weather", label: "Weather" },
-              { key: "about", label: "About" }
+              { key: "note", label: "Notes" },
             ].map((tab) => (
               <Button
                 key={tab.key}
@@ -898,6 +932,46 @@ export function App() {
 
         {activeTab === "general" ? (
           <>
+            <Card>
+              <SectionHeader title="Theme" />
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button
+                  variant={state.theme === "dark" ? "primary" : "secondary"}
+                  onClick={() => handleThemeToggle("dark")}
+                  disabled={saving}
+                >
+                  Dark
+                </Button>
+                <Button
+                  variant={state.theme === "light" ? "primary" : "secondary"}
+                  onClick={() => handleThemeToggle("light")}
+                  disabled={saving}
+                >
+                  Light
+                </Button>
+                <Button
+                  variant={state.theme === "custom" ? "primary" : "secondary"}
+                  onClick={() => {
+                    setCustomDraft(state.customTheme);
+                    setCustomThemeOpen(true);
+                  }}
+                  disabled={saving}
+                >
+                  Custom
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setCustomDraft(state.customTheme);
+                    setBackgroundThemeOpen(true);
+                  }}
+                  disabled={saving}
+                >
+                  Background Image
+                </Button>
+              </div>
+            </Card>
+
             <Card>
               <SectionHeader title="Display" />
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -942,92 +1016,86 @@ export function App() {
             </Card>
 
             <Card>
-              <SectionHeader title="Theme" />
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button
-                  variant={state.theme === "dark" ? "primary" : "secondary"}
-                  onClick={() => handleThemeToggle("dark")}
-                  disabled={saving}
-                >
-                  Dark
-                </Button>
-                <Button
-                  variant={state.theme === "light" ? "primary" : "secondary"}
-                  onClick={() => handleThemeToggle("light")}
-                  disabled={saving}
-                >
-                  Light
-                </Button>
-                <Button
-                  variant={state.theme === "custom" ? "primary" : "secondary"}
-                  onClick={() => {
-                    setCustomDraft(state.customTheme);
-                    setCustomThemeOpen(true);
-                  }}
-                  disabled={saving}
-                >
-                  Custom
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setCustomDraft(state.customTheme);
-                    setBackgroundThemeOpen(true);
-                  }}
-                  disabled={saving}
-                >
-                  Background Image
-                </Button>
+              <SectionHeader title="About" />
+              <div className="mt-4 space-y-3 text-sm text-muted">
+                <div>
+                  Created by{" "}
+                  <a className="text-accent underline" href="https://www.84boxes.com" target="_blank" rel="noreferrer">
+                    84boxes
+                  </a>
+                  .
+                </div>
+                <div>Licensed under the MIT license.</div>
+                <div>
+                  Issues and updates:{" "}
+                  <a
+                    className="text-accent underline"
+                    href="https://github.com/karlhills/hearth-display"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    github.com/karlhills/hearth-display
+                  </a>
+                </div>
               </div>
-            </Card>
-
-            <Card>
-              <SectionHeader title="Notes" meta="Shown on display" />
-              <div className="mt-4">
-                <Toggle
-                  checked={state.noteEnabled}
-                  label="Show notes on display"
-                  onChange={async (next) => {
-                    const updated = await updateState({ noteEnabled: next });
-                    setState(updated);
-                  }}
-                />
-              </div>
-              <input
-                className="mt-4 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
-                placeholder="Note title"
-                value={noteTitleDraft}
-                onChange={(event) => setNoteTitleDraft(event.target.value)}
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button variant="secondary" onClick={() => handleNoteCommand("bold")}>
-                  Bold
-                </Button>
-                <Button variant="secondary" onClick={() => handleNoteCommand("underline")}>
-                  Underline
-                </Button>
-                <Button variant="secondary" onClick={() => handleNoteCommand("insertBreak")}>
-                  Space
-                </Button>
-                <Button variant="secondary" onClick={() => handleNoteCommand("insertTable")}>
-                  Insert table
-                </Button>
-              </div>
-              <div
-                ref={noteRef}
-                className="hearth-note-editor mt-4 min-h-[140px] w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text focus:outline-none"
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(event) => {
-                  const html = (event.currentTarget as HTMLDivElement).innerHTML;
-                  setNoteDraft(html);
-                }}
-              />
-              <Button className="mt-4" onClick={handleSaveNote} disabled={saving}>
-                Save Note
+              <Button
+                className="mt-6"
+                variant="primary"
+                onClick={() => window.open("https://buymeacoffee.com/84boxes", "_blank", "noreferrer")}
+              >
+                Buy me a coffee
               </Button>
             </Card>
           </>
+        ) : null}
+
+        {activeTab === "note" ? (
+          <Card>
+            <SectionHeader title="Notes" meta="Shown on display" />
+            <div className="mt-4">
+              <Toggle
+                checked={state.noteEnabled}
+                label="Show notes on display"
+                onChange={async (next) => {
+                  const updated = await updateState({ noteEnabled: next });
+                  setState(updated);
+                }}
+              />
+            </div>
+            <input
+              className="mt-4 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
+              placeholder="Note title"
+              value={noteTitleDraft}
+              onChange={(event) => setNoteTitleDraft(event.target.value)}
+            />
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={() => handleNoteCommand("bold")}>
+                Bold
+              </Button>
+              <Button variant="secondary" onClick={() => handleNoteCommand("underline")}>
+                Underline
+              </Button>
+              <Button variant="secondary" onClick={() => handleNoteCommand("insertBreak")}>
+                Space
+              </Button>
+              <Button variant="secondary" onClick={() => handleNoteCommand("insertTable")}>
+                Insert table
+              </Button>
+            </div>
+            <div
+              ref={noteRef}
+              className="hearth-note-editor mt-4 min-h-[140px] w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text focus:outline-none"
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(event) => {
+                const html = (event.currentTarget as HTMLDivElement).innerHTML;
+                setNoteDraft(html);
+              }}
+            />
+            <Button className="mt-4" onClick={handleSaveNote} disabled={saving}>
+              Save Note
+            </Button>
+          </Card>
         ) : null}
 
         {activeTab === "calendar" ? (
@@ -1288,23 +1356,6 @@ export function App() {
                   }}
                 />
               </div>
-              <div className="mt-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-faint">Tiles per row</div>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  {[1, 2, 3, 4].map((count) => (
-                    <Button
-                      key={count}
-                      variant={state.photoTiles === count ? "primary" : "secondary"}
-                      onClick={async () => {
-                        const updated = await updateState({ photoTiles: count as 1 | 2 | 3 | 4 });
-                        setState(updated);
-                      }}
-                    >
-                      {count}
-                    </Button>
-                  ))}
-                </div>
-              </div>
             </Card>
             <Card>
               <SectionHeader title="Photo Framing" />
@@ -1331,6 +1382,42 @@ export function App() {
                 <option value="bottom-left">Bottom left</option>
                 <option value="bottom-right">Bottom right</option>
               </select>
+              <div className="mt-6">
+                <div className="text-xs uppercase tracking-[0.2em] text-faint">Tiles per row</div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {[1, 2, 3, 4].map((count) => (
+                    <Button
+                      key={count}
+                      variant={state.photoTiles === count ? "primary" : "secondary"}
+                      onClick={async () => {
+                        const updated = await updateState({ photoTiles: count as 1 | 2 | 3 | 4 });
+                        setState(updated);
+                      }}
+                    >
+                      {count}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-6">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-faint">
+                  <span>Transition speed</span>
+                  <span>{photoTransitionDraft}s</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="30"
+                  step="1"
+                  value={photoTransitionDraft}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    setPhotoTransitionDraft(next);
+                    setPhotoTransitionDirty(true);
+                  }}
+                  className="mt-3 w-full"
+                />
+              </div>
             </Card>
             {state.photoSources.google ? (
               <Card>
@@ -1469,41 +1556,6 @@ export function App() {
           </>
         ) : null}
 
-        {activeTab === "about" ? (
-          <>
-            <Card>
-              <SectionHeader title="About" />
-              <div className="mt-4 space-y-3 text-sm text-muted">
-                <div>
-                  Created by{" "}
-                  <a className="text-accent underline" href="https://www.84boxes.com" target="_blank" rel="noreferrer">
-                    84boxes
-                  </a>
-                  .
-                </div>
-                <div>Licensed under the MIT license.</div>
-                <div>
-                  Issues and updates:{" "}
-                  <a
-                    className="text-accent underline"
-                    href="https://github.com/karlhills/hearth-display"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    github.com/karlhills/hearth-display
-                  </a>
-                </div>
-              </div>
-              <Button
-                className="mt-6"
-                variant="primary"
-                onClick={() => window.open("https://buymeacoffee.com/84boxes", "_blank", "noreferrer")}
-              >
-                Buy me a coffee
-              </Button>
-            </Card>
-          </>
-        ) : null}
       </div>
       {customThemeOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4">

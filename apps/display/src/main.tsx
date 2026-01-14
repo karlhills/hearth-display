@@ -1,6 +1,5 @@
 import "@fontsource/inter/latin.css";
 import "@hearth/ui/theme.css";
-import "weather-icons/css/weather-icons.min.css";
 import "./styles.css";
 
 import React from "react";

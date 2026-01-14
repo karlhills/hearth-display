@@ -97,6 +97,7 @@ export type HearthState = {
   photoShuffle: boolean;
   photoFocus: PhotoFocus;
   photoTiles: 1 | 2 | 3 | 4;
+  photoTransitionMs: number;
   customTheme: CustomTheme;
   weather: WeatherInfo;
   forecast: WeatherForecastDay[];
