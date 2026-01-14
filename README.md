@@ -20,10 +20,14 @@ docker compose up --build
 ```
 
 Open:
-- Display: `http://<host>:8787/display?device=<deviceId>`
+- Display: `http://<host>:8787/display` (enter the pairing code shown in `/control`)
 - Control: `http://<host>:8787/control`
 
 On first boot, the server prints the pairing code and display device ID in the logs.
+
+## Display Pairing
+
+Open `/display` on your TV and enter the pairing code shown in `/control` → General → Display. The display stores the device ID locally after pairing, so you only need to enter the code once per browser/device.
 
 ## Development
 
@@ -46,7 +50,7 @@ pnpm --filter @hearth/server start
 ```
 
 Then open:
-- Display: `http://<host>:8787/display?device=<deviceId>`
+- Display: `http://<host>:8787/display` (enter the pairing code shown in `/control`)
 - Control: `http://<host>:8787/control`
 
 ## Environment
@@ -111,7 +115,7 @@ You can point Hearth at a local folder on the server to use offline photos.
 3) In `/control` → Photos → Local Photos, set the directory to `/data/photos`
 4) Click **Save & Scan**
 
-You can enable both Google Photos and Local Photos. Hearth will mix them and (optionally) shuffle the slideshow in `/control` → Photos.
+You can enable both Google Photos and Local Photos. Hearth will mix them and (optionally) shuffle the slideshow in `/control` → Photos. You can also choose 1-4 photo tiles per row for the Photos module.
 
 ## Endpoints
 
@@ -124,7 +128,9 @@ You can enable both Google Photos and Local Photos. Hearth will mix them and (op
 
 ## Layout
 
-```
+- Layout supports 4 columns with spans 1-4 per module.
+- Photos and Calendar heights are configurable in `/control` → Layout (px slider + Auto).
+- Notes can be shown/hidden from `/control` → Notes.
 
 ## Themes
 

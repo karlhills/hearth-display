@@ -18,71 +18,45 @@ body {
   background-position: var(--bg-position), 0 0, 0 0, 0 0;
 }
 
-.hearth-marquee-wrap {
+.hearth-scroll-wrap {
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(transparent, black 18%, black 82%, transparent);
 }
 
-.hearth-marquee {
-  display: inline-flex;
-  gap: 1.5rem;
-  animation: hearth-marquee 12s linear infinite;
-  padding-right: 1.5rem;
+.hearth-scroll-vertical {
+  display: block;
+  white-space: normal;
+  animation: hearth-scroll-vertical linear infinite;
 }
 
-.hearth-marquee > span {
-  white-space: nowrap;
-}
-
-.hearth-marquee-single {
-  display: inline-block;
-  white-space: nowrap;
-  padding-right: 24px;
-  animation: hearth-marquee-single linear infinite;
-}
-
-.hearth-title-wrap {
+.hearth-event-list {
   position: relative;
   width: 100%;
 }
 
-.hearth-ellipsis {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.hearth-ellipsis-text {
-  display: block;
+.hearth-wrap {
+  white-space: normal;
+  word-break: break-word;
 }
 
 .hearth-measure {
   position: absolute;
   visibility: hidden;
-  white-space: nowrap;
+  width: 100%;
   pointer-events: none;
 }
 
-@keyframes hearth-marquee {
+@keyframes hearth-scroll-vertical {
   0% {
-    transform: translateX(0%);
+    transform: translateY(0);
   }
   100% {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes hearth-marquee-single {
-  0% {
-    transform: translateX(var(--marquee-container));
-  }
-  100% {
-    transform: translateX(calc(-1 * var(--marquee-distance)));
+    transform: translateY(calc(-1 * var(--scroll-distance)));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hearth-marquee {
+  .hearth-scroll-vertical {
     animation: none;
   }
 }

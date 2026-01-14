@@ -1,11 +1,12 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export type CardProps = {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 };
 
-export function Card({ children, className }: CardProps) {
+export function Card({ children, className, style }: CardProps) {
   return (
     <div
       className={[
@@ -15,6 +16,7 @@ export function Card({ children, className }: CardProps) {
       ]
         .filter(Boolean)
         .join(" ")}
+      style={style}
     >
       {children}
     </div>

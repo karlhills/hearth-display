@@ -62,9 +62,10 @@ export type PhotoFocus =
   | "bottom-right";
 
 export type ModuleLayout = {
-  column: "left" | "center" | "right";
-  span: 1 | 2 | 3;
+  column: "left" | "center" | "center-left" | "center-right" | "right";
+  span: 1 | 2 | 3 | 4;
   order: number;
+  height?: number;
 };
 
 export type LayoutConfig = {
@@ -84,6 +85,7 @@ export type HearthState = {
   tempUnit: "f" | "c";
   weatherForecastEnabled: boolean;
   qrEnabled: boolean;
+  noteEnabled: boolean;
   noteTitle: string;
   note: string;
   events: CalendarEvent[];
@@ -93,6 +95,7 @@ export type HearthState = {
   photoSources: PhotoSources;
   photoShuffle: boolean;
   photoFocus: PhotoFocus;
+  photoTiles: 1 | 2 | 3 | 4;
   customTheme: CustomTheme;
   weather: WeatherInfo;
   forecast: WeatherForecastDay[];

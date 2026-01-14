@@ -10,6 +10,7 @@ const emptyState: HearthState = {
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,
+  noteEnabled: true,
   noteTitle: "Family Note",
   note: "",
   events: [],
@@ -19,6 +20,7 @@ const emptyState: HearthState = {
   photoSources: { google: true, local: true },
   photoShuffle: true,
   photoFocus: "center",
+  photoTiles: 1,
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -575,13 +577,26 @@ export function App() {
   };
 
   const normalizeModuleLayout = (layout: HearthState["layout"]["modules"]["calendar"]) => {
-    if (layout.span === 3) {
-      return { ...layout, column: "left" };
-    }
-    if (layout.span === 2 && layout.column === "right") {
-      return { ...layout, column: "center" };
-    }
-    return layout;
+    const columnMap: Record<HearthState["layout"]["modules"]["calendar"]["column"], number> = {
+      left: 1,
+      center: 2,
+      "center-left": 2,
+      "center-right": 3,
+      right: 4
+    };
+    const normalizedSpan = Math.min(Math.max(layout.span, 1), 4);
+    const maxStart = 5 - normalizedSpan;
+    const desired = columnMap[layout.column] ?? 1;
+    const clamped = Math.min(desired, maxStart);
+    const column =
+      clamped === 1
+        ? "left"
+        : clamped === 2
+        ? "center-left"
+        : clamped === 3
+        ? "center-right"
+        : "right";
+    return { ...layout, span: normalizedSpan as 1 | 2 | 3 | 4, column };
   };
 
   const updateModuleLayout = (key: keyof HearthState["layout"]["modules"], partial: Partial<HearthState["layout"]["modules"]["calendar"]>) => {
@@ -929,6 +944,16 @@ export function App() {
 
             <Card>
               <SectionHeader title="Notes" meta="Shown on display" />
+              <div className="mt-4">
+                <Toggle
+                  checked={state.noteEnabled}
+                  label="Show notes on display"
+                  onChange={async (next) => {
+                    const updated = await updateState({ noteEnabled: next });
+                    setState(updated);
+                  }}
+                />
+              </div>
               <input
                 className="mt-4 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
                 placeholder="Note title"
@@ -1075,6 +1100,7 @@ export function App() {
               .sort((a, b) => a[1].order - b[1].order)
               .map(([key, layout]) => {
               const label = key === "calendar" ? "Calendar" : key === "photos" ? "Photos" : "Note";
+              const layoutForUi = normalizeModuleLayout(layout);
               return (
                 <Card key={key}>
                   <SectionHeader title={label} />
@@ -1082,10 +1108,10 @@ export function App() {
                     <div>
                       <div className="text-xs uppercase tracking-[0.2em] text-faint">Column</div>
                       <div className="mt-2 flex flex-wrap items-center gap-3">
-                        {(["left", "center", "right"] as const).map((column) => (
+                        {(["left", "center-left", "center-right", "right"] as const).map((column) => (
                           <Button
                             key={column}
-                            variant={layout.column === column ? "primary" : "secondary"}
+                            variant={layoutForUi.column === column ? "primary" : "secondary"}
                             onClick={() => updateModuleLayout(key, { column })}
                           >
                             {column}
@@ -1096,11 +1122,11 @@ export function App() {
                     <div>
                       <div className="text-xs uppercase tracking-[0.2em] text-faint">Width</div>
                       <div className="mt-2 flex flex-wrap items-center gap-3">
-                        {[1, 2, 3].map((span) => (
+                        {[1, 2, 3, 4].map((span) => (
                           <Button
                             key={span}
-                            variant={layout.span === span ? "primary" : "secondary"}
-                            onClick={() => updateModuleLayout(key, { span: span as 1 | 2 | 3 })}
+                            variant={layoutForUi.span === span ? "primary" : "secondary"}
+                            onClick={() => updateModuleLayout(key, { span: span as 1 | 2 | 3 | 4 })}
                           >
                             {span} col{span === 1 ? "" : "s"}
                           </Button>
@@ -1118,6 +1144,40 @@ export function App() {
                         </Button>
                       </div>
                     </div>
+                    {key === "calendar" || key === "photos" ? (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-faint">Height</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          <input
+                            type="range"
+                            min="240"
+                            max="1200"
+                            step="20"
+                            value={layoutForUi.height ?? 600}
+                            onChange={(event) =>
+                              updateModuleLayout(key, { height: Number(event.target.value) || undefined })
+                            }
+                            className="w-full"
+                          />
+                          <input
+                            type="number"
+                            min="240"
+                            max="1200"
+                            step="20"
+                            value={layoutForUi.height ?? ""}
+                            placeholder="Auto"
+                            onChange={(event) => {
+                              const next = Number(event.target.value);
+                              updateModuleLayout(key, { height: Number.isFinite(next) ? next : undefined });
+                            }}
+                            className="w-28 rounded-xl border border-border bg-surface2 px-3 py-2 text-sm text-text"
+                          />
+                          <Button variant="secondary" onClick={() => updateModuleLayout(key, { height: undefined })}>
+                            Auto
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </Card>
               );
@@ -1166,6 +1226,23 @@ export function App() {
                     setState(updated);
                   }}
                 />
+              </div>
+              <div className="mt-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-faint">Tiles per row</div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {[1, 2, 3, 4].map((count) => (
+                    <Button
+                      key={count}
+                      variant={state.photoTiles === count ? "primary" : "secondary"}
+                      onClick={async () => {
+                        const updated = await updateState({ photoTiles: count as 1 | 2 | 3 | 4 });
+                        setState(updated);
+                      }}
+                    >
+                      {count}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </Card>
             <Card>

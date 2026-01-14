@@ -75,19 +75,22 @@ export const layoutSchema = z.object({
   sidebar: z.enum(["right", "left"]),
   modules: z.object({
     calendar: z.object({
-      column: z.enum(["left", "center", "right"]),
-      span: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-      order: z.number().int()
+      column: z.enum(["left", "center", "center-left", "center-right", "right"]),
+      span: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+      order: z.number().int(),
+      height: z.number().int().min(200).max(1400).optional()
     }),
     photos: z.object({
-      column: z.enum(["left", "center", "right"]),
-      span: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-      order: z.number().int()
+      column: z.enum(["left", "center", "center-left", "center-right", "right"]),
+      span: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+      order: z.number().int(),
+      height: z.number().int().min(200).max(1400).optional()
     }),
     note: z.object({
-      column: z.enum(["left", "center", "right"]),
-      span: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-      order: z.number().int()
+      column: z.enum(["left", "center", "center-left", "center-right", "right"]),
+      span: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+      order: z.number().int(),
+      height: z.number().int().min(200).max(1400).optional()
     })
   })
 });
@@ -99,6 +102,7 @@ export const stateSchema = z.object({
   tempUnit: z.enum(["f", "c"]),
   weatherForecastEnabled: z.boolean(),
   qrEnabled: z.boolean(),
+  noteEnabled: z.boolean(),
   noteTitle: z.string(),
   note: z.string(),
   events: z.array(calendarEventSchema),
@@ -108,6 +112,7 @@ export const stateSchema = z.object({
   photoSources: photoSourcesSchema,
   photoShuffle: z.boolean(),
   photoFocus: photoFocusSchema,
+  photoTiles: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   customTheme: customThemeSchema,
   weather: weatherSchema,
   forecast: z.array(forecastDaySchema),
@@ -122,6 +127,7 @@ export const stateUpdateSchema = z.object({
   tempUnit: z.enum(["f", "c"]).optional(),
   weatherForecastEnabled: z.boolean().optional(),
   qrEnabled: z.boolean().optional(),
+  noteEnabled: z.boolean().optional(),
   noteTitle: z.string().optional(),
   note: z.string().optional(),
   events: z.array(calendarEventSchema).optional(),
@@ -131,6 +137,7 @@ export const stateUpdateSchema = z.object({
   photoSources: photoSourcesSchema.optional(),
   photoShuffle: z.boolean().optional(),
   photoFocus: photoFocusSchema.optional(),
+  photoTiles: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
   customTheme: customThemeSchema.optional(),
   weather: weatherSchema.partial().optional(),
   forecast: z.array(forecastDaySchema).optional(),

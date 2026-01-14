@@ -37,6 +37,7 @@ export function createDefaultState(): HearthState {
     tempUnit: "f",
     weatherForecastEnabled: false,
     qrEnabled: true,
+    noteEnabled: true,
     noteTitle: "Family Note",
     note: "Dinner is at 6:30. Movie night after!",
     events: [
@@ -58,6 +59,7 @@ export function createDefaultState(): HearthState {
     photoSources: { google: true, local: true },
     photoShuffle: true,
     photoFocus: "center",
+    photoTiles: 1,
     customTheme: {
       bg: "#0B0F14",
       surface: "#111827",
@@ -114,6 +116,7 @@ export function ensureStateDefaults(state: HearthState): HearthState {
     photoSources: state.photoSources ?? defaults.photoSources,
     photoShuffle: state.photoShuffle ?? defaults.photoShuffle,
     photoFocus: state.photoFocus ?? defaults.photoFocus,
+    photoTiles: state.photoTiles ?? defaults.photoTiles,
     customTheme: {
       ...defaults.customTheme,
       ...(state.customTheme ?? {})

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { HearthState, PublicStateResponse } from "@hearth/shared";
 import { Button, Card, SectionHeader } from "@hearth/ui";
 import { subscribeToState } from "./sse";
@@ -10,6 +10,7 @@ const fallbackState: HearthState = {
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,
+  noteEnabled: true,
   noteTitle: "Family Note",
   note: "",
   events: [],
@@ -19,6 +20,7 @@ const fallbackState: HearthState = {
   photoSources: { google: true, local: true },
   photoShuffle: true,
   photoFocus: "center",
+  photoTiles: 1,
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -125,60 +127,69 @@ function applyTheme(theme: HearthState["theme"], customTheme: HearthState["custo
 }
 
 function EventTitle({ title }: { title: string }) {
-  const [shouldScroll, setShouldScroll] = useState(false);
-  const [marqueeDuration, setMarqueeDuration] = useState(12);
-  const [marqueeDistance, setMarqueeDistance] = useState(0);
-  const [measureKey, setMeasureKey] = useState(0);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const measureRef = useRef<HTMLSpanElement | null>(null);
+  return <div className="hearth-wrap">{title}</div>;
+}
 
-  useLayoutEffect(() => {
-    setMeasureKey((key) => key + 1);
-  }, [title]);
+function EventList({
+  className,
+  listClassName,
+  children
+}: {
+  className?: string;
+  listClassName?: string;
+  children: ReactNode;
+}) {
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const [scrollDuration, setScrollDuration] = useState(8);
+  const [scrollDistance, setScrollDistance] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    const measure = measureRef.current;
-    if (!container || !measure) return;
+    const content = contentRef.current;
+    if (!container || !content) return;
     const check = () => {
-      const overflow = measure.scrollWidth > container.clientWidth + 1;
+      const overflow = content.scrollHeight > container.clientHeight + 1;
       setShouldScroll(overflow);
       if (overflow) {
-        const distance = measure.scrollWidth + 24;
-        const duration = Math.max(12, Math.round((distance + container.clientWidth) / 16));
-        setMarqueeDuration(duration);
-        setMarqueeDistance(distance);
+        const distance = Math.max(0, content.scrollHeight);
+        const duration = Math.max(8, Math.round(distance / 10));
+        setScrollDuration(duration);
+        setScrollDistance(distance);
       }
     };
     check();
     const observer = new ResizeObserver(check);
     observer.observe(container);
+    observer.observe(content);
     return () => observer.disconnect();
-  }, [measureKey]);
+  }, [children]);
+
+  const list = (
+    <div ref={contentRef} className={listClassName}>
+      {children}
+    </div>
+  );
 
   return (
-    <div ref={containerRef} className="hearth-title-wrap">
+    <div ref={containerRef} className={["hearth-event-list", className].filter(Boolean).join(" ")}>
       {shouldScroll ? (
-        <div className="hearth-marquee-wrap">
-          <span
-            className="hearth-marquee-single"
+        <div className="hearth-scroll-wrap">
+          <div
+            className="hearth-scroll-vertical"
             style={{
-              animationDuration: `${marqueeDuration}s`,
-              ["--marquee-distance" as string]: `${marqueeDistance}px`,
-              ["--marquee-container" as string]: `${containerRef.current?.clientWidth ?? 0}px`
+              animationDuration: `${scrollDuration}s`,
+              ["--scroll-distance" as string]: `${scrollDistance}px`
             }}
           >
-            {title}
-          </span>
+            {list}
+            <div className={listClassName}>{children}</div>
+          </div>
         </div>
       ) : (
-        <div className="hearth-ellipsis">
-          <span className="hearth-ellipsis-text">{title}</span>
-        </div>
+        list
       )}
-      <span ref={measureRef} key={measureKey} className="hearth-measure">
-        {title}
-      </span>
     </div>
   );
 }
@@ -188,7 +199,7 @@ export function App() {
   const [state, setState] = useState<HearthState>(fallbackState);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  const [photoIndices, setPhotoIndices] = useState<number[]>([]);
   const [controlQr, setControlQr] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<string>("loading");
   const [lanIp, setLanIp] = useState<string | null>(null);
@@ -329,13 +340,45 @@ export function App() {
     return copy;
   }, [state.photoSources, state.photosGoogle, state.photosLocal, state.photos, state.photoShuffle]);
 
+  const photoTileCount = Math.min(Math.max(state.photoTiles ?? 1, 1), 4);
+
   useEffect(() => {
-    if (!mergedPhotos.length) return;
-    const interval = setInterval(() => {
-      setPhotoIndex((idx) => (idx + 1) % mergedPhotos.length);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [mergedPhotos]);
+    if (!photoTileCount) {
+      setPhotoIndices([]);
+      return;
+    }
+    if (!mergedPhotos.length) {
+      setPhotoIndices(Array.from({ length: photoTileCount }, () => 0));
+      return;
+    }
+    const step = Math.max(1, Math.floor(mergedPhotos.length / photoTileCount));
+    setPhotoIndices(Array.from({ length: photoTileCount }, (_, idx) => (idx * step) % mergedPhotos.length));
+  }, [mergedPhotos, photoTileCount]);
+
+  useEffect(() => {
+    if (!mergedPhotos.length || !photoTileCount) return;
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+    const schedule = (tileIndex: number) => {
+      const delay = 8000 + Math.random() * 6000;
+      const timer = setTimeout(() => {
+        setPhotoIndices((prev) => {
+          if (!mergedPhotos.length) return prev;
+          const next = [...prev];
+          const current = next[tileIndex] ?? 0;
+          next[tileIndex] = (current + 1) % mergedPhotos.length;
+          return next;
+        });
+        schedule(tileIndex);
+      }, delay);
+      timers.push(timer);
+    };
+    for (let i = 0; i < photoTileCount; i += 1) {
+      schedule(i);
+    }
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, [mergedPhotos, photoTileCount]);
 
   useEffect(() => {
     let active = true;
@@ -378,7 +421,7 @@ export function App() {
 
   if (!displayDeviceId) {
     return (
-      <div className="min-h-screen hearth-bg p-12 text-text">
+      <div className="min-h-screen hearth-bg p-6 text-text">
         <div className="mx-auto max-w-2xl">
           <Card>
             <SectionHeader title="Hearth Display" />
@@ -409,7 +452,7 @@ export function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen hearth-bg p-12 text-text">
+      <div className="min-h-screen hearth-bg p-6 text-text">
         <div className="mx-auto max-w-2xl">
           <Card>
             <SectionHeader title="Hearth Display" />
@@ -422,8 +465,6 @@ export function App() {
       </div>
     );
   }
-
-  const activePhoto = mergedPhotos[photoIndex];
 
   const resolvePhotoUrl = (photoUrl: string) => {
     if (!photoUrl) return photoUrl;
@@ -475,34 +516,33 @@ export function App() {
   const orderedModules = ([
     { key: "calendar", enabled: state.modules.calendar },
     { key: "photos", enabled: state.modules.photos },
-    { key: "note", enabled: Boolean(state.note) }
+    { key: "note", enabled: state.noteEnabled && Boolean(state.note) }
   ] as const)
     .map((module) => ({ ...module, layout: layoutModules[module.key] }))
     .filter((module) => module.enabled)
     .sort((a, b) => a.layout.order - b.layout.order);
 
   const columnStart = {
-    left: "col-start-1",
-    center: "col-start-2",
-    right: "col-start-3"
+    left: 1,
+    center: 2,
+    "center-left": 2,
+    "center-right": 3,
+    right: 4
   } as const;
 
-  const spanClass = {
-    1: "col-span-1",
-    2: "col-span-2",
-    3: "col-span-3"
-  } as const;
-
-  const getLayoutClass = (layout: typeof layoutModules.calendar) => {
-    if (layout.span === 3) return "col-span-3";
-    if (layout.span === 2) {
-      return layout.column === "right" ? "col-span-2 col-start-2" : `col-span-2 ${columnStart[layout.column]}`;
-    }
-    return `${spanClass[layout.span]} ${columnStart[layout.column]}`;
+  const getLayoutStyle = (layout: typeof layoutModules.calendar) => {
+    const span = Math.min(Math.max(layout.span, 1), 4);
+    const maxStart = 5 - span;
+    const desired = columnStart[layout.column] ?? 1;
+    const start = Math.min(desired, maxStart);
+    return {
+      gridColumn: `${start} / span ${span}`,
+      height: layout.height ? `${layout.height}px` : undefined
+    };
   };
 
   return (
-    <div className="min-h-screen hearth-bg p-12 text-text">
+    <div className="min-h-screen hearth-bg p-6 text-text">
       <div className="mx-auto flex min-h-[calc(100vh-96px)] max-w-6xl flex-col gap-8">
         <header className="flex items-center justify-between gap-6">
           <div className="flex flex-col justify-center rounded-2xl border border-border bg-surface2 px-6 py-4">
@@ -566,88 +606,96 @@ export function App() {
           </div>
         </header>
 
-        <div className="grid flex-1 grid-cols-3 gap-6">
+        <div className="grid flex-1 grid-cols-4 gap-6">
           {orderedModules.map((module) => {
             if (module.key === "calendar") {
               return (
-                <Card key="calendar" className={getLayoutClass(module.layout)}>
+                <Card key="calendar" className="flex flex-col overflow-hidden" style={getLayoutStyle(module.layout)}>
                   <SectionHeader title={today.toLocaleDateString([], { month: "long", year: "numeric" })} />
                   {state.calendarView === "week" ? (
-                    <div className="mt-6 grid grid-cols-7 gap-3 text-sm">
-                      {weekDays.map((day) => {
-                        const iso = toLocalIsoDate(day);
-                        const isToday = iso === todayIso;
-                        const events = eventsByDate[iso] ?? [];
-                        return (
-                          <div
-                            key={iso}
-                            className={[
-                              "rounded-2xl border p-3",
-                              isToday ? "border-accent bg-[color:var(--calendar-today)]" : "border-border bg-[color:var(--calendar-day)]"
-                            ].join(" ")}
-                          >
-                            <div className="text-xs uppercase tracking-[0.2em] text-faint">
-                              {day.toLocaleDateString([], { weekday: "short" })}
+                    <div className="mt-6 flex-1 min-h-0 overflow-auto">
+                      <div className="grid grid-cols-7 gap-px rounded-2xl bg-border p-px text-sm overflow-hidden">
+                        {weekDays.map((day) => {
+                          const iso = toLocalIsoDate(day);
+                          const isToday = iso === todayIso;
+                          const events = eventsByDate[iso] ?? [];
+                          return (
+                            <div
+                              key={iso}
+                              className={[
+                                "p-3",
+                                isToday
+                                  ? "bg-[color:var(--calendar-today)] ring-2 ring-inset ring-accent"
+                                  : "bg-[color:var(--calendar-day)]"
+                              ].join(" ")}
+                            >
+                              <div className="text-xs uppercase tracking-[0.2em] text-faint">
+                                {day.toLocaleDateString([], { weekday: "short" })}
+                              </div>
+                              <div className={["mt-1 text-lg font-semibold", isToday ? "text-accent" : ""].join(" ")}>
+                                {day.getDate()}
+                              </div>
+                              <EventList className="mt-3 max-h-[7.5rem] overflow-hidden text-xs text-muted" listClassName="space-y-2">
+                                {events.length ? (
+                                  events.map((event) => (
+                                    <div
+                                      key={event.id}
+                                      className={[
+                                        "rounded-lg px-2 py-1",
+                                        event.allDay ? "bg-accent text-slate-900" : "bg-surface text-text"
+                                      ].join(" ")}
+                                    >
+                                      <EventTitle title={event.title} />
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-faint">—</div>
+                                )}
+                              </EventList>
                             </div>
-                            <div className={["mt-1 text-lg font-semibold", isToday ? "text-accent" : ""].join(" ")}>
-                              {day.getDate()}
-                            </div>
-                            <div className="mt-3 space-y-2 text-base text-muted">
-                              {events.length ? (
-                                events.map((event) => (
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-6 flex-1 min-h-0 overflow-auto">
+                      <div className="grid grid-cols-7 gap-px rounded-xl bg-border p-px text-xs overflow-hidden">
+                        {monthDays.map((day) => {
+                          const iso = toLocalIsoDate(day);
+                          const events = eventsByDate[iso] ?? [];
+                          const isCurrentMonth = day.getMonth() === today.getMonth();
+                          const isToday = iso === todayIso;
+                          const baseBg = isCurrentMonth
+                            ? "bg-[color:var(--calendar-day)]"
+                            : "bg-[color:var(--calendar-day-muted)] opacity-80";
+                          return (
+                            <div
+                              key={iso}
+                              className={[
+                                "p-2 min-h-[120px]",
+                                isToday ? "bg-[color:var(--calendar-today)] ring-2 ring-inset ring-accent" : baseBg
+                              ].join(" ")}
+                            >
+                              <div className={["text-xs font-semibold", isToday ? "text-accent" : ""].join(" ")}>
+                                {day.getDate()}
+                              </div>
+                              <EventList className="mt-2 max-h-[6rem] overflow-hidden text-xs text-muted" listClassName="space-y-1">
+                                {events.map((event) => (
                                   <div
                                     key={event.id}
                                     className={[
-                                      "rounded-lg px-2 py-1",
+                                      "rounded px-1 py-0.5",
                                       event.allDay ? "bg-accent text-slate-900" : "bg-surface text-text"
                                     ].join(" ")}
                                   >
                                     <EventTitle title={event.title} />
                                   </div>
-                                ))
-                              ) : (
-                                <div className="text-faint">—</div>
-                              )}
+                                ))}
+                              </EventList>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="mt-6 grid grid-cols-7 gap-2 text-xs">
-                      {monthDays.map((day) => {
-                        const iso = toLocalIsoDate(day);
-                        const events = eventsByDate[iso] ?? [];
-                        const isCurrentMonth = day.getMonth() === today.getMonth();
-                        const isToday = iso === todayIso;
-                        return (
-                          <div
-                            key={iso}
-                            className={[
-                              "rounded-xl border p-2 min-h-[120px]",
-                              isToday ? "border-accent bg-[color:var(--calendar-today)]" : "border-border bg-[color:var(--calendar-day)]",
-                              isCurrentMonth ? "" : "bg-[color:var(--calendar-day-muted)] opacity-80"
-                            ].join(" ")}
-                          >
-                            <div className={["text-xs font-semibold", isToday ? "text-accent" : ""].join(" ")}>
-                              {day.getDate()}
-                            </div>
-                            <div className="mt-2 space-y-1 text-base text-muted">
-                              {events.map((event) => (
-                                <div
-                                  key={event.id}
-                                  className={[
-                                    "rounded px-1 py-0.5",
-                                    event.allDay ? "bg-accent text-slate-900" : "bg-surface text-text"
-                                  ].join(" ")}
-                                >
-                                  <EventTitle title={event.title} />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </Card>
@@ -656,7 +704,7 @@ export function App() {
 
             if (module.key === "note") {
               return (
-                <Card key="note" className={getLayoutClass(module.layout)}>
+                <Card key="note" className="" style={getLayoutStyle(module.layout)}>
                   {state.noteTitle ? <SectionHeader title={state.noteTitle} /> : null}
                   <div
                     className="hearth-note mt-4 text-lg text-muted"
@@ -667,21 +715,30 @@ export function App() {
             }
 
             if (module.key === "photos") {
+              const tileCount = photoTileCount;
+              const gridStyle = { gridTemplateColumns: `repeat(${tileCount}, minmax(0, 1fr))` };
               return (
-                <Card key="photos" className={[getLayoutClass(module.layout), "relative flex flex-col overflow-hidden"].join(" ")}>
-                  <div className="relative w-full flex-1 overflow-hidden rounded-2xl min-h-[16rem]">
-                    {mergedPhotos.map((photo, idx) => (
-                      <img
-                        key={photo}
-                        src={resolvePhotoUrl(photo)}
-                        alt="Family memory"
-                        className={[
-                          "absolute inset-0 h-full w-full object-cover transition-opacity duration-[12000ms]",
-                          idx === photoIndex ? "opacity-100" : "opacity-0"
-                        ].join(" ")}
-                        style={state.photoFocus === "none" ? undefined : { objectPosition: focusMap[state.photoFocus] }}
-                      />
-                    ))}
+                <Card key="photos" className="relative flex flex-col overflow-hidden !p-0 !md:p-0" style={getLayoutStyle(module.layout)}>
+                  <div className="grid h-full w-full flex-1 gap-2" style={gridStyle}>
+                    {Array.from({ length: tileCount }, (_, tileIndex) => {
+                      const activeIndex = photoIndices[tileIndex] ?? 0;
+                      return (
+                        <div key={tileIndex} className="relative overflow-hidden bg-surface min-h-[16rem]">
+                          {mergedPhotos.map((photo, idx) => (
+                            <img
+                              key={`${tileIndex}-${photo}`}
+                              src={resolvePhotoUrl(photo)}
+                              alt="Family memory"
+                              className={[
+                                "absolute inset-0 h-full w-full object-cover transition-opacity duration-[12000ms]",
+                                idx === activeIndex ? "opacity-100" : "opacity-0"
+                              ].join(" ")}
+                              style={state.photoFocus === "none" ? undefined : { objectPosition: focusMap[state.photoFocus] }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </Card>
               );
