@@ -13,6 +13,14 @@ Hearth is a local-first, LAN-only family dashboard built for a TV browser. It ru
 - Persistent SQLite storage
 - Dark + Light "Hearth Matte" themes
 
+## Recent changes
+
+- `/display` QR code now appears as a bottom-right overlay instead of in the header.
+- Weather icons now use Tomorrow.io filled SVGs vendored in `apps/display/public/weather-icons/`.
+- Weather forecast dates are stored with timezone offsets to avoid off-by-one display issues.
+- `/control` tabs reorganized: Notes has its own tab; About card moved into General.
+- `/control` Photos tab groups framing + tiles + transition speed in one card; transition speed is debounced.
+
 ## Quickstart (Docker)
 
 ```bash

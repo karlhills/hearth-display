@@ -110,6 +110,14 @@ export function parseIcsEvents(icsText: string, now = new Date(), timeFormat: "1
 
     if (item.rrule && item.start instanceof Date) {
       const dates = item.rrule.between(windowStart, windowEnd, true);
+      const startDate = item.start;
+      if (startDate >= windowStart && startDate <= windowEnd) {
+        const startKey = startDate.toISOString();
+        if (!dates.some((date) => date.toISOString() === startKey)) {
+          dates.push(startDate);
+        }
+      }
+      dates.sort((a, b) => a.getTime() - b.getTime());
       for (const occurrence of dates) {
         const occurrenceKey = occurrence.toISOString();
         if (shouldSkipDate(item, occurrence)) continue;
