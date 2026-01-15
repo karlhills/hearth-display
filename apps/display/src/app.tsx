@@ -8,6 +8,7 @@ const fallbackState: HearthState = {
   modules: { calendar: true, photos: true, weather: true },
   calendarView: "week",
   calendarTimeFormat: "12h",
+  calendarNote: "",
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,
@@ -642,7 +643,14 @@ export function App() {
             if (module.key === "calendar") {
               return (
                 <Card key="calendar" className="flex flex-col overflow-hidden" style={getLayoutStyle(module.layout)}>
-                  <SectionHeader title={today.toLocaleDateString([], { month: "long", year: "numeric" })} />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <SectionHeader title={today.toLocaleDateString([], { month: "long", year: "numeric" })} />
+                    {state.calendarNote.trim() ? (
+                      <div className="rounded-xl border border-border bg-surface2 px-4 py-2 text-sm text-text opacity-90 shadow-[0_6px_16px_rgba(0,0,0,0.12)]">
+                        {state.calendarNote}
+                      </div>
+                    ) : null}
+                  </div>
                   {state.calendarView === "week" ? (
                     <div className="mt-6 flex-1 min-h-0 overflow-auto">
                       <div className="grid grid-cols-7 gap-px rounded-2xl bg-border p-px text-sm overflow-hidden">

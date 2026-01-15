@@ -8,6 +8,7 @@ const emptyState: HearthState = {
   modules: { calendar: true, photos: true, weather: true },
   calendarView: "week",
   calendarTimeFormat: "12h",
+  calendarNote: "",
   tempUnit: "f",
   weatherForecastEnabled: false,
   qrEnabled: true,
@@ -195,6 +196,7 @@ export function App() {
   const [photoTransitionDirty, setPhotoTransitionDirty] = useState(false);
   const [noteDraft, setNoteDraft] = useState(emptyState.note);
   const [noteTitleDraft, setNoteTitleDraft] = useState(emptyState.noteTitle);
+  const [calendarNoteDraft, setCalendarNoteDraft] = useState(emptyState.calendarNote);
   const [deviceId, setDeviceId] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
   const [calendarUrl, setCalendarUrl] = useState("");
@@ -263,6 +265,7 @@ export function App() {
         setCustomDraft(data.state.customTheme);
         setNoteDraft(data.state.note);
         setNoteTitleDraft(data.state.noteTitle);
+        setCalendarNoteDraft(data.state.calendarNote);
         applyTheme(data.state.theme, data.state.customTheme);
         setError(null);
       })
@@ -542,6 +545,20 @@ export function App() {
     } catch (err) {
       console.error(err);
       setError("Failed to save note.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCalendarNote = async () => {
+    try {
+      setSaving(true);
+      const updated = await updateState({ calendarNote: calendarNoteDraft.trim() });
+      setState(updated);
+      setCalendarNoteDraft(updated.calendarNote);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save calendar note.");
     } finally {
       setSaving(false);
     }
@@ -1151,6 +1168,20 @@ export function App() {
                   24-hour
                 </Button>
               </div>
+            </Card>
+
+            <Card>
+              <SectionHeader title="Calendar Note" meta="Shown next to the month/year title" />
+              <div className="mt-4 text-sm text-muted">Keep it short so it fits alongside the date.</div>
+              <input
+                className="mt-4 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
+                placeholder="e.g. Week A • Visitors at 4pm"
+                value={calendarNoteDraft}
+                onChange={(event) => setCalendarNoteDraft(event.target.value)}
+              />
+              <Button className="mt-4" onClick={handleSaveCalendarNote} disabled={saving}>
+                Save Calendar Note
+              </Button>
             </Card>
 
             <Card>

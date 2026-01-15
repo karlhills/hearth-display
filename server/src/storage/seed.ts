@@ -35,6 +35,7 @@ export function createDefaultState(): HearthState {
     },
     calendarView: "week",
     calendarTimeFormat: "12h",
+    calendarNote: "",
     tempUnit: "f",
     weatherForecastEnabled: false,
     qrEnabled: true,

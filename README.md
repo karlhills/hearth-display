@@ -138,6 +138,7 @@ You can enable both Google Photos and Local Photos. Hearth will mix them and (op
 
 - Layout supports 4 columns with spans 1-4 per module.
 - Photos and Calendar heights are configurable in `/control` → Layout (px slider + Auto).
+- Calendar Note text is editable in `/control` → Calendar and shows next to the month/year title.
 - Notes can be shown/hidden from `/control` → Notes.
 
 ## Themes
