@@ -24,7 +24,7 @@ export async function runMigrations(db: HearthDb) {
     );
   `);
 
-  const popupColumns = await db.all<{ name: string }>("PRAGMA table_info(popups)");
+  const popupColumns = await db.all<{ name: string }[]>("PRAGMA table_info(popups)");
   const hasPriority = popupColumns.some((column) => column.name === "priority");
   if (!hasPriority) {
     await db.exec("ALTER TABLE popups ADD COLUMN priority TEXT NOT NULL DEFAULT 'success'");

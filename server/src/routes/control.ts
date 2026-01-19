@@ -41,7 +41,10 @@ type PartialStateUpdate = Partial<HearthState> & {
   weather?: Partial<HearthState["weather"]>;
 };
 
-const allowedPopupPriorities = new Set(["success", "warning", "emergency", "plain"]);
+const allowedPopupPriorities = new Set<Popup["priority"]>(["success", "warning", "emergency", "plain"]);
+
+const isPopupPriority = (value: unknown): value is Popup["priority"] =>
+  typeof value === "string" && allowedPopupPriorities.has(value as Popup["priority"]);
 
 function mergeState(current: HearthState, partial: PartialStateUpdate) {
   return {
@@ -161,11 +164,8 @@ export function registerControlRoutes(
     }
 
     const body = popupCreateSchema.parse(request.body);
-    const rawPriority = (request.body as { priority?: string }).priority;
-    const priority =
-      typeof rawPriority === "string" && allowedPopupPriorities.has(rawPriority)
-        ? rawPriority
-        : body.priority ?? "success";
+    const rawPriority = (request.body as { priority?: unknown }).priority;
+    const priority = isPopupPriority(rawPriority) ? rawPriority : body.priority ?? "success";
     const now = new Date();
     const id = crypto.randomUUID();
     const expiresAt =
@@ -199,11 +199,8 @@ export function registerControlRoutes(
 
     const params = request.params as { id: string };
     const body = popupUpdateSchema.parse(request.body);
-    const rawPriority = (request.body as { priority?: string }).priority;
-    const priorityOverride =
-      typeof rawPriority === "string" && allowedPopupPriorities.has(rawPriority)
-        ? rawPriority
-        : body.priority;
+    const rawPriority = (request.body as { priority?: unknown }).priority;
+    const priorityOverride = isPopupPriority(rawPriority) ? rawPriority : body.priority;
     const existing = await getPopup(db, params.id);
     if (!existing) {
       reply.code(404);
