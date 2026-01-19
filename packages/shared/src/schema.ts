@@ -46,6 +46,61 @@ export const photoFocusSchema = z.enum([
   "bottom-right"
 ]);
 
+export const popupPositionSchema = z.enum([
+  "top-left",
+  "top-middle",
+  "top-right",
+  "middle-left",
+  "middle",
+  "middle-right",
+  "bottom-left",
+  "bottom-middle",
+  "bottom-right"
+]);
+
+export const popupModeSchema = z.enum(["temporary", "manual"]);
+export const popupPrioritySchema = z.enum(["success", "warning", "emergency", "plain"]);
+
+export const popupSchema = z.object({
+  id: z.string(),
+  message: z.string().min(1),
+  position: popupPositionSchema,
+  mode: popupModeSchema,
+  priority: popupPrioritySchema,
+  durationSeconds: z.number().int().positive().optional(),
+  visible: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  expiresAt: z.string().nullable().optional()
+});
+
+export const popupCreateSchema = z
+  .object({
+    message: z.string().min(1),
+    position: popupPositionSchema,
+    mode: popupModeSchema,
+    priority: popupPrioritySchema.optional().default("success"),
+    durationSeconds: z.number().int().positive().optional()
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "temporary" && !value.durationSeconds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Temporary popups require durationSeconds",
+        path: ["durationSeconds"]
+      });
+    }
+  });
+
+export const popupUpdateSchema = z.object({
+  message: z.string().min(1).optional(),
+  position: popupPositionSchema.optional(),
+  mode: popupModeSchema.optional(),
+  priority: popupPrioritySchema.optional(),
+  durationSeconds: z.number().int().positive().optional(),
+  visible: z.boolean().optional()
+});
+
 export const photoSourcesSchema = z.object({
   google: z.boolean(),
   local: z.boolean()

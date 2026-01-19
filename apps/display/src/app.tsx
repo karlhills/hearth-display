@@ -1,7 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { HearthState, PublicStateResponse } from "@hearth/shared";
+import type { HearthState, PublicStateResponse, Popup } from "@hearth/shared";
 import { Button, Card, SectionHeader } from "@hearth/ui";
 import { subscribeToState } from "./sse";
+import { marked } from "marked";
+
+marked.setOptions({ breaks: true });
 
 const fallbackState: HearthState = {
   theme: "dark",
@@ -236,6 +239,7 @@ export function App() {
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairInput, setPairInput] = useState("");
   const [pairError, setPairError] = useState<string | null>(null);
+  const [popups, setPopups] = useState<Popup[]>([]);
   const [pairedDeviceId, setPairedDeviceId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem("hearthDisplayDeviceId");
@@ -334,6 +338,20 @@ export function App() {
         console.error(err);
       });
 
+    fetch("/api/popups")
+      .then(async (res) => {
+        if (!res.ok) return { popups: [] };
+        return (await res.json()) as { popups: Popup[] };
+      })
+      .then((data) => {
+        if (!active) return;
+        console.info("Initial popups loaded", data.popups);
+        setPopups(data.popups ?? []);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
     return () => {
       active = false;
     };
@@ -351,6 +369,23 @@ export function App() {
       },
       () => {
         window.location.reload();
+      },
+      (payload) => {
+        console.info("Popup event received", payload);
+        if (payload.action === "clear") {
+          setPopups([]);
+          return;
+        }
+        if (payload.action === "upsert" && payload.popup) {
+          const popup = payload.popup as Popup;
+          setPopups((prev) => {
+            const index = prev.findIndex((item) => item.id === popup.id);
+            if (index === -1) return [...prev, popup];
+            const next = [...prev];
+            next[index] = popup;
+            return next;
+          });
+        }
       }
     );
 
@@ -437,6 +472,25 @@ export function App() {
       active = false;
     };
   }, [controlUrl]);
+
+  useEffect(() => {
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+    const nowMs = Date.now();
+    popups.forEach((popup) => {
+      if (!popup.visible || !popup.expiresAt) return;
+      const expiresAt = new Date(popup.expiresAt).getTime();
+      if (Number.isNaN(expiresAt) || expiresAt <= nowMs) return;
+      const timer = setTimeout(() => {
+        setPopups((prev) =>
+          prev.map((item) => (item.id === popup.id ? { ...item, visible: false } : item))
+        );
+      }, expiresAt - nowMs);
+      timers.push(timer);
+    });
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, [popups]);
 
   const resolvedDeviceId = deviceId ?? "";
   const handlePairSubmit = (event?: React.FormEvent) => {
@@ -580,6 +634,101 @@ export function App() {
     };
   };
 
+  const activePopups = useMemo(() => {
+    const nowMs = now.getTime();
+    return popups.filter((popup) => {
+      if (!popup.visible) return false;
+      if (!popup.expiresAt) return true;
+      const expiresAt = new Date(popup.expiresAt).getTime();
+      return Number.isNaN(expiresAt) ? true : expiresAt > nowMs;
+    });
+  }, [now, popups]);
+
+  const popupGroups = useMemo(() => {
+    return activePopups.reduce<Record<Popup["position"], Popup[]>>(
+      (acc, popup) => {
+        acc[popup.position] = acc[popup.position] ? [...acc[popup.position], popup] : [popup];
+        return acc;
+      },
+      {
+        "top-left": [],
+        "top-middle": [],
+        "top-right": [],
+        "middle-left": [],
+        middle: [],
+        "middle-right": [],
+        "bottom-left": [],
+        "bottom-middle": [],
+        "bottom-right": []
+      }
+    );
+  }, [activePopups]);
+
+  const popupPositions: Array<Popup["position"]> = [
+    "top-left",
+    "top-middle",
+    "top-right",
+    "middle-left",
+    "middle",
+    "middle-right",
+    "bottom-left",
+    "bottom-middle",
+    "bottom-right"
+  ];
+
+  const popupClasses: Record<Popup["position"], string> = {
+    "top-left": "top-6 left-6 items-start",
+    "top-middle": "top-6 left-1/2 -translate-x-1/2 items-center",
+    "top-right": "top-6 right-6 items-end",
+    "middle-left": "top-1/2 left-6 -translate-y-1/2 items-start",
+    middle: "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center",
+    "middle-right": "top-1/2 right-6 -translate-y-1/2 items-end",
+    "bottom-left": "bottom-6 left-6 items-start",
+    "bottom-middle": "bottom-6 left-1/2 -translate-x-1/2 items-center",
+    "bottom-right": "bottom-6 right-6 items-end"
+  };
+
+  const popupPriorityColors: Record<Popup["priority"], string> = {
+    success: "var(--accent)",
+    warning: "#f59e0b",
+    emergency: "#ef4444",
+    plain: "var(--text)"
+  };
+
+  const renderPopupIcon = (priority: Popup["priority"]) => {
+    if (priority === "plain") {
+      return null;
+    }
+    if (priority === "success") {
+      return (
+        <svg viewBox="0 0 24 24" className="hearth-popup-icon" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 2.5c5.25 0 9.5 4.25 9.5 9.5s-4.25 9.5-9.5 9.5S2.5 17.25 2.5 12 6.75 2.5 12 2.5zm4.02 6.85-4.69 4.7-2.36-2.37a.9.9 0 1 0-1.27 1.27l3 3a.9.9 0 0 0 1.27 0l5.33-5.33a.9.9 0 1 0-1.28-1.27z"
+          />
+        </svg>
+      );
+    }
+    if (priority === "warning") {
+      return (
+        <svg viewBox="0 0 24 24" className="hearth-popup-icon" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 3.2c.4 0 .76.21.95.55l8.02 14.35a1.1 1.1 0 0 1-.95 1.65H3.98a1.1 1.1 0 0 1-.95-1.65L11.05 3.75c.19-.34.55-.55.95-.55zm0 5.3a.9.9 0 0 0-.9.9v4.2a.9.9 0 0 0 1.8 0V9.4a.9.9 0 0 0-.9-.9zm0 8.1a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"
+          />
+        </svg>
+      );
+    }
+    return (
+      <svg viewBox="0 0 24 24" className="hearth-popup-icon" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M8.6 2.5h6.8c.47 0 .9.2 1.2.53l4.87 5.3c.32.34.5.8.5 1.27v6.75c0 1.1-.9 2-2 2H4.03c-1.1 0-2-.9-2-2V9.65c0-.47.18-.93.5-1.27l4.87-5.3c.3-.33.73-.53 1.2-.53zm3.4 6.15a.9.9 0 0 0-.9.9v4.2a.9.9 0 0 0 1.8 0v-4.2a.9.9 0 0 0-.9-.9zm0 7.95a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"
+        />
+      </svg>
+    );
+  };
+
   return (
     <div className="min-h-screen hearth-bg p-6 text-text">
       <div className="mx-auto flex min-h-[calc(100vh-96px)] max-w-6xl flex-col gap-8">
@@ -652,7 +801,7 @@ export function App() {
                     ) : null}
                   </div>
                   {state.calendarView === "week" ? (
-                    <div className="mt-6 flex-1 min-h-0 overflow-auto">
+                    <div className="mt-6 flex-1 min-h-0 overflow-hidden">
                       <div className="grid grid-cols-7 gap-px rounded-2xl bg-border p-px text-sm overflow-hidden">
                         {weekDays.map((day) => {
                           const iso = toLocalIsoDate(day);
@@ -697,7 +846,7 @@ export function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-6 flex-1 min-h-0 overflow-auto">
+                    <div className="mt-6 flex-1 min-h-0 overflow-hidden">
                       <div className="grid grid-cols-7 gap-px rounded-xl bg-border p-px text-xs overflow-hidden">
                         {monthDays.map((day) => {
                           const iso = toLocalIsoDate(day);
@@ -804,6 +953,38 @@ export function App() {
           </div>
         </div>
       ) : null}
+      {popupPositions.map((position) => {
+        const items = popupGroups[position];
+        if (!items?.length) return null;
+        return (
+          <div
+            key={position}
+            className={[
+              "pointer-events-none fixed z-40 flex max-w-sm flex-col gap-3",
+              popupClasses[position]
+            ].join(" ")}
+          >
+            {items.map((popup) => (
+              <div
+                key={popup.id}
+                className="hearth-popup rounded-2xl border border-border px-5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur"
+              >
+                <div className="flex items-start gap-3">
+                  {renderPopupIcon(popup.priority) ? (
+                    <div className="mt-0.5" style={{ color: popupPriorityColors[popup.priority] }}>
+                      {renderPopupIcon(popup.priority)}
+                    </div>
+                  ) : null}
+                  <div
+                    className="min-w-0"
+                    dangerouslySetInnerHTML={{ __html: marked.parse(popup.message) }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

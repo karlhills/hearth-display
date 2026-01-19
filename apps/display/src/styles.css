@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
 body {
   font-family: "Inter", system-ui, sans-serif;
+  overflow: hidden;
 }
 
 .hearth-bg {
@@ -89,4 +91,54 @@ body {
   color: var(--text);
   font-weight: 600;
   background: color-mix(in srgb, var(--surface2) 70%, transparent);
+}
+
+.hearth-popup {
+  color: var(--text);
+  background-color: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+.hearth-popup > :first-child {
+  margin-top: 0;
+}
+
+.hearth-popup > :last-child {
+  margin-bottom: 0;
+}
+
+.hearth-popup p {
+  margin: 0.35rem 0;
+}
+
+.hearth-popup strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hearth-popup em {
+  font-style: italic;
+}
+
+.hearth-popup ul,
+.hearth-popup ol {
+  margin: 0.4rem 0 0.4rem 1.1rem;
+}
+
+.hearth-popup code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  font-family: "SFMono-Regular", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+.hearth-popup a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.hearth-popup-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
 }

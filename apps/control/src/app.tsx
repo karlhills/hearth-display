@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, HearthState, Theme } from "@hearth/shared";
 import { Button, Card, SectionHeader, Toggle } from "@hearth/ui";
-import { clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPairingCode, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, reloadDisplay, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
+import { clearPopups, clearStoredToken, clearThemeBackground, completePickerSession, createPickerSession, disconnectGooglePhotos, fetchCalendarSettings, fetchGooglePhotosStatus, fetchLocalPhotosSettings, fetchPairingCode, fetchPickerSession, fetchState, fetchWeatherSettings, getStoredToken, pair, reloadDisplay, scanLocalPhotos, toggleModule, updateCalendarSettings, updateLocalPhotosSettings, updateState, updateWeatherSettings, uploadThemeBackground } from "./api";
 
 const emptyState: HearthState = {
   theme: "dark",
@@ -218,6 +218,7 @@ export function App() {
   const [localPhotosDir, setLocalPhotosDir] = useState("");
   const [localPhotosLoading, setLocalPhotosLoading] = useState(false);
   const layoutDirtyRef = useRef(false);
+  const [clearingPopups, setClearingPopups] = useState(false);
   const layoutSaveTimer = useRef<number | null>(null);
   const [customThemeOpen, setCustomThemeOpen] = useState(false);
   const [backgroundThemeOpen, setBackgroundThemeOpen] = useState(false);
@@ -1005,6 +1006,26 @@ export function App() {
                   }}
                 >
                   Reload display
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={clearingPopups}
+                  onClick={async () => {
+                    const confirmClear = window.confirm("Clear all display popups?");
+                    if (!confirmClear) return;
+                    try {
+                      setClearingPopups(true);
+                      await clearPopups();
+                      setError(null);
+                    } catch (err) {
+                      console.error(err);
+                      setError("Unable to clear display popups.");
+                    } finally {
+                      setClearingPopups(false);
+                    }
+                  }}
+                >
+                  {clearingPopups ? "Clearing popups..." : "Clear popups"}
                 </Button>
               </div>
               <div className="mt-4 rounded-xl border border-border bg-surface2 px-4 py-3 text-sm">

@@ -61,6 +61,34 @@ export type PhotoFocus =
   | "bottom-left"
   | "bottom-right";
 
+export type PopupPosition =
+  | "top-left"
+  | "top-middle"
+  | "top-right"
+  | "middle-left"
+  | "middle"
+  | "middle-right"
+  | "bottom-left"
+  | "bottom-middle"
+  | "bottom-right";
+
+export type PopupMode = "temporary" | "manual";
+
+export type PopupPriority = "success" | "warning" | "emergency" | "plain";
+
+export type Popup = {
+  id: string;
+  message: string;
+  position: PopupPosition;
+  mode: PopupMode;
+  priority: PopupPriority;
+  durationSeconds?: number;
+  visible: boolean;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string | null;
+};
+
 export type ModuleLayout = {
   column: "left" | "center" | "center-left" | "center-right" | "right";
   span: 1 | 2 | 3 | 4;

@@ -1,16 +1,17 @@
 import type { FastifyInstance } from "fastify";
 import type { HearthDb } from "../storage/db.js";
 import { getSetting, loadState, saveState } from "../storage/db.js";
-import { stateUpdateSchema, toggleModuleSchema, layoutUpdateSchema, pairingSchema } from "@hearth/shared";
+import { stateUpdateSchema, toggleModuleSchema, layoutUpdateSchema, pairingSchema, popupCreateSchema, popupUpdateSchema } from "@hearth/shared";
 import type { createSseManager } from "../realtime/sse.js";
 import { signToken, verifyToken } from "../auth/token.js";
-import type { HearthState } from "@hearth/shared";
+import type { HearthState, Popup } from "@hearth/shared";
 import { getCalendarIcsUrl, setCalendarIcsUrl, syncCalendarFromIcs } from "../calendar/sync.js";
 import { ensureStateDefaults } from "../storage/seed.js";
 import { getWeatherQuery, setWeatherQuery, syncWeather } from "../weather/sync.js";
 import { clearGoogleCredentials, createPickerSession, exchangeCodeForToken, fetchTokenInfo, getGoogleRefreshToken, getPickerSession, refreshAccessToken, resolveSessionId, setGoogleRefreshToken, syncGooglePhotosFromPicker } from "../photos/google.js";
 import { getLocalPhotosDir, scanLocalPhotos, setLocalPhotosDir } from "../photos/local.js";
 import { clearThemeBackground, saveThemeBackground } from "../theme/background.js";
+import { clearPopups, getPopup, insertPopup, updatePopup } from "../storage/popups.js";
 
 function requireAuth(secret: string, authHeader?: string) {
   if (!authHeader) return false;
@@ -39,6 +40,8 @@ type PartialStateUpdate = Partial<HearthState> & {
   modules?: Partial<HearthState["modules"]>;
   weather?: Partial<HearthState["weather"]>;
 };
+
+const allowedPopupPriorities = new Set(["success", "warning", "emergency", "plain"]);
 
 function mergeState(current: HearthState, partial: PartialStateUpdate) {
   return {
@@ -147,6 +150,108 @@ export function registerControlRoutes(
       return { error: "Device ID missing" };
     }
     sse.broadcastEvent(storedDeviceId, "reload", { ts: Date.now() });
+    return { ok: true };
+  });
+
+  fastify.post("/api/control/popups", async (request, reply) => {
+    fastify.log.info({ popupPayload: request.body }, "Popup create request");
+    if (!requireAuth(tokenSecret, request.headers.authorization)) {
+      reply.code(401);
+      return { error: "Unauthorized" };
+    }
+
+    const body = popupCreateSchema.parse(request.body);
+    const rawPriority = (request.body as { priority?: string }).priority;
+    const priority =
+      typeof rawPriority === "string" && allowedPopupPriorities.has(rawPriority)
+        ? rawPriority
+        : body.priority ?? "success";
+    const now = new Date();
+    const id = crypto.randomUUID();
+    const expiresAt =
+      body.mode === "temporary" && body.durationSeconds
+        ? new Date(now.getTime() + body.durationSeconds * 1000).toISOString()
+        : null;
+    const popup: Popup = {
+      id,
+      message: body.message,
+      position: body.position,
+      mode: body.mode,
+      priority,
+      durationSeconds: body.durationSeconds,
+      visible: true,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      expiresAt
+    };
+
+    await insertPopup(db, popup);
+    sse.broadcastEventAll("popup", { action: "upsert", popup });
+    return { id, popup };
+  });
+
+  fastify.post("/api/control/popups/:id", async (request, reply) => {
+    fastify.log.info({ popupId: (request.params as { id: string }).id, popupPayload: request.body }, "Popup update request");
+    if (!requireAuth(tokenSecret, request.headers.authorization)) {
+      reply.code(401);
+      return { error: "Unauthorized" };
+    }
+
+    const params = request.params as { id: string };
+    const body = popupUpdateSchema.parse(request.body);
+    const rawPriority = (request.body as { priority?: string }).priority;
+    const priorityOverride =
+      typeof rawPriority === "string" && allowedPopupPriorities.has(rawPriority)
+        ? rawPriority
+        : body.priority;
+    const existing = await getPopup(db, params.id);
+    if (!existing) {
+      reply.code(404);
+      return { error: "Popup not found" };
+    }
+
+    const now = new Date();
+    const mode = body.mode ?? existing.mode;
+    const durationSeconds = body.durationSeconds ?? existing.durationSeconds;
+    let expiresAt = existing.expiresAt ?? null;
+
+    if (mode === "manual") {
+      expiresAt = null;
+    } else if (body.mode === "temporary" || body.durationSeconds !== undefined) {
+      if (!durationSeconds) {
+        reply.code(400);
+        return { error: "Temporary popups require durationSeconds" };
+      }
+      expiresAt = new Date(now.getTime() + durationSeconds * 1000).toISOString();
+    }
+
+    const popup: Popup = {
+      ...existing,
+      message: body.message ?? existing.message,
+      position: body.position ?? existing.position,
+      mode,
+      priority: priorityOverride ?? existing.priority ?? "success",
+      durationSeconds: mode === "temporary" ? durationSeconds : undefined,
+      visible: body.visible ?? existing.visible,
+      updatedAt: now.toISOString(),
+      expiresAt
+    };
+
+    await updatePopup(db, popup);
+    sse.broadcastEventAll("popup", { action: "upsert", popup });
+    return { popup };
+  });
+
+  fastify.post("/api/control/popups/clear", async (request, reply) => {
+    fastify.log.info("Popup clear request");
+    if (!requireAuth(tokenSecret, request.headers.authorization)) {
+      reply.code(401);
+      return { error: "Unauthorized" };
+    }
+
+    const nowIso = new Date().toISOString();
+    await clearPopups(db, nowIso);
+    sse.broadcastEventAll("popup", { action: "clear" });
     return { ok: true };
   });
 

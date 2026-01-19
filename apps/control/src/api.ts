@@ -92,6 +92,18 @@ export async function reloadDisplay() {
   return (await res.json()) as { ok: true };
 }
 
+export async function clearPopups() {
+  const res = await fetch("/api/control/popups/clear", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({})
+  });
+  if (!res.ok) {
+    throw new Error("Failed to clear popups");
+  }
+  return (await res.json()) as { ok: true };
+}
+
 export async function updateLayout(layout: HearthState["layout"]) {
   const res = await fetch("/api/control/layout", {
     method: "POST",

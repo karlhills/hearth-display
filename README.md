@@ -128,11 +128,88 @@ You can enable both Google Photos and Local Photos. Hearth will mix them and (op
 ## Endpoints
 
 - `GET /api/state` - public state for display
+- `GET /api/popups` - public active popups for display
 - `GET /api/display/:deviceId/events` - SSE stream
 - `POST /api/control/pair` - pairing code → token
 - `POST /api/control/state` - update state (auth)
 - `POST /api/control/modules/toggle` - toggle modules (auth)
 - `POST /api/control/layout` - update layout (auth)
+- `POST /api/control/popups` - create popup (auth)
+- `POST /api/control/popups/:id` - update popup (auth)
+- `POST /api/control/popups/clear` - clear all popups (auth)
+
+## Popup API
+
+Popups are lightweight overlay cards on `/display`. Messages render as Markdown. Each popup is assigned an `id` for follow-up updates.
+
+Positions:
+`top-left`, `top-middle`, `top-right`, `middle-left`, `middle`, `middle-right`, `bottom-left`, `bottom-middle`, `bottom-right`
+
+Modes:
+- `temporary` (requires `durationSeconds`)
+- `manual` (persists until hidden with `visible: false`)
+
+Priority:
+- `success` (default)
+- `warning`
+- `emergency`
+- `plain` (no icon)
+
+### Create a popup
+
+```bash
+curl -X POST http://localhost:8787/api/control/popups \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "**Dinner** in 10 minutes.",
+    "position": "top-right",
+    "mode": "temporary",
+    "priority": "warning",
+    "durationSeconds": 15
+  }'
+```
+
+Response includes the `id`:
+
+```json
+{ "id": "popup-id", "popup": { "...": "..." } }
+```
+
+### Update a popup (show/hide or edit)
+
+```bash
+curl -X POST http://localhost:8787/api/control/popups/<id> \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "visible": false
+  }'
+```
+
+You can also update `message`, `position`, `mode`, and `durationSeconds` via the same endpoint.
+
+### Clear all popups
+
+```bash
+curl -X POST http://localhost:8787/api/control/popups/clear \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json"
+```
+
+### Auth token
+
+Use the pairing code to get a token:
+
+```bash
+curl -X POST http://localhost:8787/api/control/pair \
+  -H "Content-Type: application/json" \
+  -d '{ "code": "ABCD" }'
+```
+
+Then pass the token as `Authorization: Bearer <token>`.
+
+Tokens expire after 30 days.
 
 ## Layout
 

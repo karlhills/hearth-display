@@ -9,6 +9,7 @@ import { createReadStream } from "node:fs";
 import { getLocalPhotosDir, resolveLocalPhotoPath } from "../photos/local.js";
 import os from "node:os";
 import { resolveThemeBackgroundPath } from "../theme/background.js";
+import { listActivePopups } from "../storage/popups.js";
 
 export function registerPublicRoutes(
   fastify: FastifyInstance,
@@ -49,6 +50,12 @@ export function registerPublicRoutes(
   fastify.get("/api/pairing", async () => {
     const code = await getSetting(db, "pairingCode");
     return { code: code ?? "" };
+  });
+
+  fastify.get("/api/popups", async () => {
+    const nowIso = new Date().toISOString();
+    const popups = await listActivePopups(db, nowIso);
+    return { popups };
   });
 
   fastify.get("/api/network", async () => {
