@@ -24,6 +24,11 @@ const emptyState: HearthState = {
   photoFocus: "center",
   photoTiles: 1,
   photoTransitionMs: 12000,
+  offSchedule: {
+    enabled: false,
+    start: "22:00",
+    end: "06:00"
+  },
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -146,6 +151,24 @@ function clampOpacity(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
+function parseTimeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map((part) => Number.parseInt(part, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function isOffScheduleActive(schedule: HearthState["offSchedule"] | undefined, now: Date) {
+  if (!schedule?.enabled) return false;
+  const start = parseTimeToMinutes(schedule.start);
+  const end = parseTimeToMinutes(schedule.end);
+  if (start === null || end === null) return false;
+  const current = now.getHours() * 60 + now.getMinutes();
+  if (start === end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
+}
+
 const defaultCustomTheme: HearthState["customTheme"] = {
   bg: "#0B0F14",
   surface: "#111827",
@@ -187,6 +210,7 @@ const lightCustomTheme: HearthState["customTheme"] = {
 export function App() {
   const [state, setState] = useState<HearthState>(emptyState);
   const [token, setToken] = useState(initialToken);
+  const [now, setNow] = useState(() => new Date());
   const [pairCode, setPairCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -224,6 +248,7 @@ export function App() {
   const [backgroundThemeOpen, setBackgroundThemeOpen] = useState(false);
   const [themeHintOpen, setThemeHintOpen] = useState<string | null>(null);
   const [customDraft, setCustomDraft] = useState<HearthState["customTheme"]>(defaultCustomTheme);
+  const offActive = isOffScheduleActive(state.offSchedule, now);
 
   const displayOrigin = useMemo(() => {
     const host = window.location.hostname;
@@ -315,6 +340,11 @@ export function App() {
       const nextUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
       window.history.replaceState({}, "", nextUrl);
     }
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000 * 60);
+    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -1050,6 +1080,76 @@ export function App() {
                     setState(updated);
                   }}
                 />
+              </div>
+            </Card>
+
+            <Card>
+              <SectionHeader title="Screen Off" meta="Show a black screen during scheduled hours" />
+              <div className="mt-4">
+                <Toggle
+                  checked={state.offSchedule.enabled}
+                  label="Enable screen off schedule"
+                  onChange={async (next) => {
+                    const updated = await updateState({
+                      offSchedule: {
+                        ...state.offSchedule,
+                        enabled: next
+                      }
+                    });
+                    setState(updated);
+                  }}
+                />
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-faint">
+                  Off start
+                  <input
+                    type="time"
+                    className="w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
+                    value={state.offSchedule.start}
+                    onChange={async (event) => {
+                      const updated = await updateState({
+                        offSchedule: {
+                          ...state.offSchedule,
+                          start: event.target.value
+                        }
+                      });
+                      setState(updated);
+                    }}
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-faint">
+                  Off end
+                  <input
+                    type="time"
+                    className="w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text"
+                    value={state.offSchedule.end}
+                    onChange={async (event) => {
+                      const updated = await updateState({
+                        offSchedule: {
+                          ...state.offSchedule,
+                          end: event.target.value
+                        }
+                      });
+                      setState(updated);
+                    }}
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted">
+                  Uses the display device time. Overnight ranges (start after end) are supported.
+                </span>
+                {state.offSchedule.enabled ? (
+                  <span
+                    className={[
+                      "rounded-full px-2 py-1",
+                      offActive ? "bg-emerald-500/15 text-emerald-300" : "bg-surface2 text-muted"
+                    ].join(" ")}
+                  >
+                    {offActive ? "Screen off right now" : "Screen on right now"}
+                  </span>
+                ) : null}
               </div>
             </Card>
 

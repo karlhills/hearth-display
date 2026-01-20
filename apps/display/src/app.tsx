@@ -27,6 +27,11 @@ const fallbackState: HearthState = {
   photoFocus: "center",
   photoTiles: 1,
   photoTransitionMs: 12000,
+  offSchedule: {
+    enabled: false,
+    start: "22:00",
+    end: "06:00"
+  },
   customTheme: {
     bg: "#0B0F14",
     surface: "#111827",
@@ -80,6 +85,24 @@ function parseLocalDateString(value: string) {
   }
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function parseTimeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map((part) => Number.parseInt(part, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function isOffScheduleActive(schedule: HearthState["offSchedule"] | undefined, now: Date) {
+  if (!schedule?.enabled) return false;
+  const start = parseTimeToMinutes(schedule.start);
+  const end = parseTimeToMinutes(schedule.end);
+  if (start === null || end === null) return false;
+  const current = now.getHours() * 60 + now.getMinutes();
+  if (start === end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
 }
 
 function iconAssetForCode(code: number) {
@@ -492,6 +515,33 @@ export function App() {
     };
   }, [popups]);
 
+  const offActive = isOffScheduleActive(state.offSchedule, now);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (offActive) {
+      root.dataset.off = "true";
+      document.body.dataset.off = "true";
+    } else {
+      delete root.dataset.off;
+      delete document.body.dataset.off;
+    }
+  }, [offActive]);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    if (offActive) {
+      root.style.backgroundColor = "#000";
+      body.style.backgroundColor = "#000";
+      body.style.backgroundImage = "none";
+    } else {
+      root.style.removeProperty("background-color");
+      body.style.removeProperty("background-color");
+      body.style.removeProperty("background-image");
+    }
+  }, [offActive]);
+
   const resolvedDeviceId = deviceId ?? "";
   const handlePairSubmit = (event?: React.FormEvent) => {
     event?.preventDefault();
@@ -728,6 +778,23 @@ export function App() {
       </svg>
     );
   };
+
+  if (offActive) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "#000"
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen hearth-bg p-6 text-text">

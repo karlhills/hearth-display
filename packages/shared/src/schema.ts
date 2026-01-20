@@ -106,6 +106,12 @@ export const photoSourcesSchema = z.object({
   local: z.boolean()
 });
 
+export const offScheduleSchema = z.object({
+  enabled: z.boolean(),
+  start: z.string().regex(/^\d{2}:\d{2}$/),
+  end: z.string().regex(/^\d{2}:\d{2}$/)
+});
+
 export const customThemeSchema = z.object({
   bg: z.string().min(1),
   surface: z.string().min(1),
@@ -171,6 +177,7 @@ export const stateSchema = z.object({
   photoFocus: photoFocusSchema,
   photoTiles: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   photoTransitionMs: z.number(),
+  offSchedule: offScheduleSchema,
   customTheme: customThemeSchema,
   weather: weatherSchema,
   forecast: z.array(forecastDaySchema),
@@ -199,6 +206,7 @@ export const stateUpdateSchema = z.object({
   photoFocus: photoFocusSchema.optional(),
   photoTiles: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
   photoTransitionMs: z.number().optional(),
+  offSchedule: offScheduleSchema.optional(),
   customTheme: customThemeSchema.optional(),
   weather: weatherSchema.partial().optional(),
   forecast: z.array(forecastDaySchema).optional(),

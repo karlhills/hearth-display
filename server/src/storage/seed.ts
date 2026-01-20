@@ -63,6 +63,11 @@ export function createDefaultState(): HearthState {
     photoFocus: "center",
     photoTiles: 1,
     photoTransitionMs: 12000,
+    offSchedule: {
+      enabled: false,
+      start: "22:00",
+      end: "06:00"
+    },
     customTheme: {
       bg: "#0B0F14",
       surface: "#111827",
@@ -121,6 +126,10 @@ export function ensureStateDefaults(state: HearthState): HearthState {
     photoFocus: state.photoFocus ?? defaults.photoFocus,
     photoTiles: state.photoTiles ?? defaults.photoTiles,
     photoTransitionMs: state.photoTransitionMs ?? defaults.photoTransitionMs,
+    offSchedule: {
+      ...defaults.offSchedule,
+      ...(state.offSchedule ?? {})
+    },
     customTheme: {
       ...defaults.customTheme,
       ...(state.customTheme ?? {})

@@ -12,10 +12,12 @@ Hearth is a local-first, LAN-only family dashboard built for a TV browser. It ru
 - Live updates via Server-Sent Events (SSE)
 - Persistent SQLite storage
 - Dark + Light "Hearth Matte" themes
+- Scheduled screen-off window that blanks `/display` to black
 
 ## Recent changes
 
 - `/display` QR code now appears as a bottom-right overlay instead of in the header.
+- Screen Off schedule added in `/control` → General to blank the display to black.
 - Weather icons now use Tomorrow.io filled SVGs vendored in `apps/display/public/weather-icons/`.
 - Weather forecast dates are stored with timezone offsets to avoid off-by-one display issues.
 - `/control` tabs reorganized: Notes has its own tab; About card moved into General.
@@ -217,6 +219,10 @@ Tokens expire after 30 days.
 - Photos and Calendar heights are configurable in `/control` → Layout (px slider + Auto).
 - Calendar Note text is editable in `/control` → Calendar and shows next to the month/year title.
 - Notes can be shown/hidden from `/control` → Notes.
+
+## Screen Off
+
+Use `/control` → General → Screen Off to enable a nightly off window. When active, `/display` switches to a black screen. Start/end times use the display device's local clock, and overnight ranges (start after end) are supported.
 
 ## Themes
 

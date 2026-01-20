@@ -8,6 +8,12 @@ body {
   overflow: hidden;
 }
 
+html[data-off="true"],
+body[data-off="true"],
+body[data-off="true"] #root {
+  background-color: #000 !important;
+}
+
 .hearth-bg {
   background-color: var(--bg);
   background-image:

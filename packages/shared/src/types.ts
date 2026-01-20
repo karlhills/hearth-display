@@ -30,6 +30,12 @@ export type PhotoSources = {
   local: boolean;
 };
 
+export type OffSchedule = {
+  enabled: boolean;
+  start: string;
+  end: string;
+};
+
 export type CustomTheme = {
   bg: string;
   surface: string;
@@ -127,6 +133,7 @@ export type HearthState = {
   photoFocus: PhotoFocus;
   photoTiles: 1 | 2 | 3 | 4;
   photoTransitionMs: number;
+  offSchedule: OffSchedule;
   customTheme: CustomTheme;
   weather: WeatherInfo;
   forecast: WeatherForecastDay[];
