@@ -20,6 +20,10 @@
 - Cached under `GOOGLE_PHOTOS_CACHE_DIR` (default `/data/google-cache`)
 - Cache URLs are relative (e.g. `/api/photos/cache?...`) and resolve based on the host used for `/display`
 
+## Display QR
+- QR URL on `/display` resolves from the display page origin (host/domain currently rendered)
+- Dev exception: when display runs on `:5173`, QR points to control on `:5174` on the same host
+
 ## Custom theme
 - Theme can be `dark`, `light`, or `custom`
 - Custom theme values stored in state and applied via CSS variables

@@ -17,6 +17,7 @@ Hearth is a local-first, LAN-only family dashboard built for a TV browser. It ru
 ## Recent changes
 
 - `/display` QR code now appears as a bottom-right overlay instead of in the header.
+- `/display` QR code now uses the same host/domain as the page currently open on the display.
 - Screen Off schedule added in `/control` → General to blank the display to black.
 - Weather icons now use Tomorrow.io filled SVGs vendored in `apps/display/public/weather-icons/`.
 - Weather forecast dates are stored with timezone offsets to avoid off-by-one display issues.
@@ -77,7 +78,7 @@ Key values:
 - `GOOGLE_PHOTOS_REDIRECT_URI` (default `http://localhost:8787/api/control/photos/google/callback`)
 - `GOOGLE_PHOTOS_CACHE_DIR` (default `/data/google-cache`)
 - `DEV_CONTROL_ORIGIN` (optional; dev-only redirect target after Google OAuth, e.g. `http://localhost:5174/control/`)
-- `LAN_IP` (optional; override LAN IP for QR URLs)
+- `LAN_IP` (optional; override detected LAN IP reported by `/api/network`)
 - `THEME_ASSETS_DIR` (default `/data/theme`)
 
 ## Google Photos (optional)

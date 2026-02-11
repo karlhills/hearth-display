@@ -258,7 +258,6 @@ export function App() {
   const [photoIndices, setPhotoIndices] = useState<number[]>([]);
   const [controlQr, setControlQr] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<string>("loading");
-  const [lanIp, setLanIp] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairInput, setPairInput] = useState("");
   const [pairError, setPairError] = useState<string | null>(null);
@@ -268,12 +267,6 @@ export function App() {
     return window.localStorage.getItem("hearthDisplayDeviceId");
   });
 
-  const displayOrigin = useMemo(() => {
-    const host = lanIp || window.location.hostname;
-    const port = window.location.port;
-    return `${window.location.protocol}//${host}${port ? `:${port}` : ""}`;
-  }, [lanIp]);
-
   const deviceIdFromUrl = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("device");
@@ -281,15 +274,12 @@ export function App() {
   const displayDeviceId = deviceIdFromUrl ?? pairedDeviceId;
 
   const controlOrigin = useMemo(() => {
-    const host = lanIp || window.location.hostname;
     const isDevDisplay = window.location.port === "5173";
-    const port = isDevDisplay
-      ? "5174"
-      : window.location.port && window.location.port !== "8787"
-      ? window.location.port
-      : "8787";
-    return `${window.location.protocol}//${host}${port ? `:${port}` : ""}`;
-  }, [lanIp]);
+    if (isDevDisplay) {
+      return `${window.location.protocol}//${window.location.hostname}:5174`;
+    }
+    return window.location.origin;
+  }, []);
 
   const controlUrl = useMemo(() => {
     const base = `${controlOrigin}/control/`;
@@ -329,21 +319,6 @@ export function App() {
       .catch((err) => {
         console.error(err);
         setError("Unable to reach Hearth server.");
-      });
-
-    fetch("/api/network")
-      .then(async (res) => {
-        if (!res.ok) return { lanIp: null };
-        return (await res.json()) as { lanIp: string | null };
-      })
-      .then((data) => {
-        if (!active) return;
-        if (data.lanIp) {
-          setLanIp(data.lanIp);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
       });
 
     fetch("/api/pairing")
